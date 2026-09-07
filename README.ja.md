@@ -2,13 +2,19 @@
 
 [English](README.md)
 
-この日本語版は、公開された英語の指示書に対応する参考資料です。英語の指示書は静的検証済みですが、英語化後の通常CLIによる実機検証は未実施です。
+## これは何か
 
-Codex CLIで調査、実装、検証、独立レビューを分担するための3 Skillと7 Agentです。Rootが依頼を分解して結果を受け入れ、同じ作業ツリーでソースを編集する担当は同時に1人とします。
+Codex Fleet Kitは、Codex CLIで範囲を限定した作業を分担するためのソースKitです。調査、実装、検証、独立レビューに使う3 Skillと7つの名前付きAgentを提供します。Rootが依頼を分解して範囲を割り当て、結果を統合して受け入れを判断します。
 
-特定のWindows環境で通常CLIによる実作業を確認しています。すべての環境での動作や、速度・費用・品質の優位を保証するものではありません。OpenAIの公式配布物ではありません。
+独立した調査、限定的な実装、実テスト、レビューを分ける必要がある作業向けです。常駐スケジューラー、sandbox、OpenAIの公式配布物ではありません。同一worktreeのソース編集者は常に1人にします。
 
-## SkillとAgent
+## 使う場面
+
+独立した調査、限定された実装、検証、独立レビューを含む複雑な依頼には`fleet-orchestrator`を使います。根拠付きレビューや実測比較だけが必要なら、専門Skillを単独で使えます。
+
+単純な質問、誤字、Rootが直接完了できる短い密結合修正にはFleetを使いません。子Agentは再委譲しません。
+
+## 含まれるSkillとAgent
 
 | Skill | 用途 |
 |---|---|
@@ -37,9 +43,9 @@ Codex CLIで調査、実装、検証、独立レビューを分担するため�
 
 ローカル回帰テストとpreview生成には、Codex CLI、ログイン、APIキーは不要です。確認したCLIと制限は[互換性](docs/compatibility.md)に記載しています。
 
-## 生成と確認
+## 最短の確認手順
 
-リポジトリのルートで実行します。
+リポジトリをcloneしてから、ルートで実行します。
 
 ```powershell
 pwsh -NoProfile -File tests/run.ps1
@@ -47,7 +53,7 @@ pwsh -NoProfile -File scripts/render.ps1 -Preview
 pwsh -NoProfile -File scripts/verify.ps1
 ```
 
-生成物は`.local/build/preview/`、テスト結果は`.local/artifacts/tests.json`、一時作業は`.local/runs/`に保存します。`.local/`全体をGitから除外しています。
+回帰テスト、インストール不可のpreview bundle生成、その静的検証を順に実行します。生成物は`.local/build/preview/`、テスト結果は`.local/artifacts/tests.json`、一時作業は`.local/runs/`に保存します。`.local/`全体をGitから除外しています。
 
 モデルの例は[config/model-tiers.example.yaml](config/model-tiers.example.yaml)、役割の対応は[config/routing.yaml](config/routing.yaml)です。例のモデルIDをそのまま利用できるとは限りません。対象のCLIとアカウントで利用できる構成を確認してください。YAMLファイルはJSON互換形式です。
 
@@ -55,20 +61,20 @@ pwsh -NoProfile -File scripts/verify.ps1
 pwsh -NoProfile -File scripts/render.ps1 -Preview -ModelTiers config/model-tiers.example.yaml
 ```
 
-`-Preview`の生成物は`installable=false`です。静的検証の成功は、実効モデル・権限や自動導入の合格を意味しません。
+`-Preview`の生成物は`installable=false`です。静的検証の成功は、実効モデル、権限、実機動作、自動導入の合格を意味しません。
 
-## プロジェクトで使う
+## プロジェクトへ追加する
 
-生成物の`payload/`から、必要な資産を対象プロジェクトの対応する場所へ配置します。既存ファイルとの衝突は事前に確認してください。生成物を直接編集せず、このリポジトリの原稿を変更して再生成します。
+previewを生成してから、`payload/`にある必要な資産だけを対象プロジェクトの対応する場所へコピーします。既存ファイルとの衝突は事前に確認してください。生成物を直接編集せず、このリポジトリの原稿を変更して再生成します。
 
 | 生成物内の場所 | 対象プロジェクトの場所 |
 |---|---|
 | `payload/.agents/skills/<Skill名>/` | `.agents/skills/<Skill名>/` |
 | `payload/.codex/agents/fleet_*.toml` | `.codex/agents/fleet_*.toml` |
 
-統括とCriticalは、専門Skillがプロジェクトの`.agents/skills/`にあることを前提にしています。プロジェクト設定の例は[config.fragment.toml.template](templates/codex/config.fragment.toml.template)です。既存設定を丸ごと置き換えず、必要な項目の差分を確認して追加します。
+`fleet-orchestrator`と`fleet_reviewer_critical`は、専門Skillがプロジェクトの`.agents/skills/`にあることを前提にしています。プロジェクト設定の断片例は[config.fragment.toml.template](templates/codex/config.fragment.toml.template)です。既存設定を丸ごと置き換えず、必要な項目の差分を確認して追加します。
 
-対象プロジェクトのルートで明示起動します。依頼文は対象、要件、変更できる範囲を含む具体的な内容に置き換えてください。
+対象プロジェクトのルートでSkillを明示起動します。依頼文は、対象、必要な動作、変更を許可するファイル、検証コマンドを含む具体的な内容に置き換えてください。
 
 ```powershell
 codex exec --approve-for-me '$fleet-orchestrator を使い、指定した課題を実装、実テスト、独立レビュー、結果回収まで完了してください。実装writerは同時に1つとします。'
@@ -78,13 +84,25 @@ codex exec --approve-for-me '$benchmark-lab を単独で使い、指定した2�
 
 更新、撤回、任意の診断は[運用手順](docs/operations.md)を参照してください。
 
-## 検証範囲
+## 安全に使うための注意
 
-3 Skillの定義を読み込んだ操作と担当作業、7 Agentの名前付き実行、単一writer、実テスト、独立レビュー、Rootへの結果回収、タスク完了をローカルで確認しました。回帰テストはスキーマ、所有権、パス、生成・配置・撤回、保全、失敗時の処理を扱います。GitHub Actionsでは認証不要の回帰・生成・静的検証を実行します。
+- 既存の差分、ステージ済みファイル、未追跡ファイルを保全します。明示的な許可なく破棄や履歴の書き換えをしません。
+- 役割のpromptやTOML設定は運用規約であり、OSが強制するセキュリティ境界ではありません。
+- ユーザー環境への変更はdry-runから始め、明示的なapply前に提案された差分を確認します。
+- 認証情報、個人設定、生ログ、ローカル証跡はGitに含めません。ローカル専用の保存先は`.local/`です。
+- 子の完了を受け入れやthread解放と見なしません。Rootが証跡、実際の変更、残存コマンドを確認します。
 
-thread解放、役割ごとのOS強制read-only、全境界試験、暗黙起動、自動導入の全面的な検証は未完了です。親のworkspace-writeが子にも適用されたため、レビューの非編集は役割規約と差分照合で確認しています。12条件比較は未実施で、[比較プロトコル](docs/benchmark-protocol.md)の計画と実測を区別しています。
+## 変更後の検証
 
-実行ログ、個人設定の調査記録、ローカル環境のパスを含む証拠は公開ソースに含めません。公開可能な範囲の検証概要は[互換性](docs/compatibility.md)にまとめています。
+Kitの正本を変更した後は、リポジトリのルートで次の順序で実行します。
+
+```powershell
+pwsh -NoProfile -File tests/run.ps1
+pwsh -NoProfile -File scripts/render.ps1 -Preview
+pwsh -NoProfile -File scripts/verify.ps1
+```
+
+テストコマンドはKitの回帰テストを実行します。preview生成はインストール不可のbundleを作り、`verify.ps1`がそのbundleを検査します。Fleetを配置したプロジェクトでは、資産をコピーした後にそのプロジェクトの標準検証コマンドも実行してください。静的検証の成功は、実効モデル、権限、実機動作、自動導入を保証しません。
 
 [開発への参加](CONTRIBUTING.md)・[セキュリティ](SECURITY.md)・[変更履歴](CHANGELOG.md)
 

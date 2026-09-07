@@ -2,11 +2,19 @@
 
 [Japanese](README.ja.md)
 
-Three Skills and seven Agents for dividing research, implementation, verification, and independent review in Codex CLI. Root decomposes requests and accepts results; only one person edits source in a worktree at a time.
+## What this is
 
-The prior Japanese instruction set underwent normal-CLI practical verification in a specific Windows environment. The current English instruction set has static validation only and requires renewed practical runtime verification. This does not guarantee behavior in every environment or a speed, cost, or quality advantage. This is not an official OpenAI distribution.
+Codex Fleet Kit is a source kit for coordinating bounded work in Codex CLI. It supplies three reusable Skills and seven named Agent roles for research, implementation, verification, and independent review. Root decomposes the request, assigns bounded work, integrates the result, and decides acceptance.
 
-## Skills and Agents
+It is designed for work that benefits from separating investigation, a focused implementation, real verification, and review. It is not a background scheduler, a sandbox, or an official OpenAI distribution. Only one source writer may edit a worktree at a time.
+
+## When to use it
+
+Use `fleet-orchestrator` for a non-trivial request with independent research, a bounded implementation, verification, or independent review. Use the specialist Skills by themselves when only an evidence-based review or a measured comparison is needed.
+
+Do not use Fleet for a simple question, a typo, or a short tightly coupled edit that Root can complete directly. Child Agents must not recursively delegate work.
+
+## Included Skills and Agents
 
 | Skill | Purpose |
 |---|---|
@@ -35,9 +43,9 @@ Do not start all seven Agents every time. Return design decisions and unexpected
 
 Local regression tests and preview generation require neither Codex CLI, sign-in, nor an API key. [Compatibility](docs/compatibility.md) records the verified CLI and limitations.
 
-## Generate and verify
+## Quick start
 
-Run from the repository root:
+Clone the repository and run the following commands from its root:
 
 ```powershell
 pwsh -NoProfile -File tests/run.ps1
@@ -45,28 +53,28 @@ pwsh -NoProfile -File scripts/render.ps1 -Preview
 pwsh -NoProfile -File scripts/verify.ps1
 ```
 
-Generated output is stored in `.local/build/preview/`, test results in `.local/artifacts/tests.json`, and temporary work in `.local/runs/`. The entire `.local/` directory is excluded from Git.
+These commands run the regression suite, generate a non-installable preview bundle, and statically verify that bundle. Generated output is stored in `.local/build/preview/`, test results in `.local/artifacts/tests.json`, and temporary work in `.local/runs/`. The entire `.local/` directory is excluded from Git.
 
-The model example is [config/model-tiers.example.yaml](config/model-tiers.example.yaml), and role mapping is [config/routing.yaml](config/routing.yaml). Example model IDs may not be available unchanged. Confirm a usable configuration for the target CLI and account. YAML files use JSON-compatible syntax.
+The model example is [config/model-tiers.example.yaml](config/model-tiers.example.yaml), and role mapping is [config/routing.yaml](config/routing.yaml). Example model IDs may not be available unchanged. Confirm a usable configuration for the target CLI and account. These YAML files use JSON-compatible syntax.
 
 ```powershell
 pwsh -NoProfile -File scripts/render.ps1 -Preview -ModelTiers config/model-tiers.example.yaml
 ```
 
-`-Preview` output has `installable=false`. A static verification pass does not prove effective models, permissions, or automated deployment.
+`-Preview` output has `installable=false`. A static verification pass does not prove effective models, permissions, runtime behavior, or automated deployment.
 
-## Use in a project
+## Add Fleet to a project
 
-Place the required assets from generated `payload/` in the corresponding locations of the target project. Check for conflicts with existing files first. Do not edit generated output directly; change this repository's source of truth and regenerate.
+Generate a preview, then copy only the required assets from its `payload/` directory into the corresponding locations in the target project. Inspect conflicts before copying. Do not edit generated output directly; update this repository's source of truth and regenerate.
 
 | Generated location | Target project location |
 |---|---|
 | `payload/.agents/skills/<Skill-name>/` | `.agents/skills/<Skill-name>/` |
 | `payload/.codex/agents/fleet_*.toml` | `.codex/agents/fleet_*.toml` |
 
-Orchestration and Critical depend on specialist Skills existing under the project's `.agents/skills/`. See [config.fragment.toml.template](templates/codex/config.fragment.toml.template) for a project-configuration example. Do not replace existing configuration wholesale; inspect and add only the required entries.
+`fleet-orchestrator` and `fleet_reviewer_critical` expect the specialist Skills to exist under the project's `.agents/skills/`. See [config.fragment.toml.template](templates/codex/config.fragment.toml.template) for a configuration fragment. Do not replace existing configuration wholesale; inspect and add only the required entries.
 
-Invoke explicitly from the target project's root. Replace the following requests with concrete content including the target, requirements, and allowed changes.
+Invoke a Skill explicitly from the target project's root. Replace the following example requests with concrete details: the target, required behavior, permitted files, and verification command.
 
 ```powershell
 codex exec --approve-for-me '$fleet-orchestrator: implement the specified task, run real tests, obtain independent review, and collect results. Allow only one implementation writer at a time.'
@@ -76,13 +84,25 @@ codex exec --approve-for-me '$benchmark-lab: independently compare the two speci
 
 For updates, rollback, and optional diagnostics, see [operations](docs/operations.md).
 
-## Verification scope
+## Operating safely
 
-The prior Japanese instruction set was locally verified for work that reads and uses all three Skill definitions, named execution of seven Agents, one writer, real tests, independent review, result collection by Root, and task completion. The current English instructions have static validation only. Regression tests cover schemas, ownership, paths, generation, deployment, rollback, preservation, and failure handling. GitHub Actions runs unauthenticated regression, generation, and static verification.
+- Preserve existing diffs, staged files, and untracked files. Never discard or rewrite them without explicit authorization.
+- Treat role prompts and TOML configuration as operating conventions, not OS-enforced security boundaries.
+- Use dry runs for user-environment changes. Inspect proposed differences before an explicit apply operation.
+- Keep credentials, personal configuration, raw logs, and local evidence outside Git. `.local/` is the intended local-only location.
+- Do not treat child completion as acceptance or thread release. Root must check evidence, actual changes, and remaining commands.
 
-Thread release, per-role OS-enforced read-only access, all boundary tests, implicit invocation, and comprehensive automated-deployment verification are incomplete. Because the parent's `workspace-write` applied to children, reviewer non-editing was checked through role contract and diff comparison. The twelve-condition comparison has not run; [the comparative protocol](docs/benchmark-protocol.md) distinguishes its plan from measurements.
+## Verify changes
 
-Public source excludes evidence containing run logs, personal-configuration research records, or local-environment paths. [Compatibility](docs/compatibility.md) summarizes verification that can be published.
+After changing the Kit's source of truth, run the following commands from the repository root in this order:
+
+```powershell
+pwsh -NoProfile -File tests/run.ps1
+pwsh -NoProfile -File scripts/render.ps1 -Preview
+pwsh -NoProfile -File scripts/verify.ps1
+```
+
+The test command exercises the Kit's regression suite. Preview generation creates a non-installable bundle, and `verify.ps1` checks that bundle. For a project using Fleet, also run that project's standard verification commands after copying assets. A static pass does not prove effective models, permissions, runtime behavior, or automated deployment.
 
 [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
 
