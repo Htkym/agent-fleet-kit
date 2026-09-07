@@ -1,0 +1,10 @@
+{
+  "format_version":1,
+  "trusted":false,
+  "commands":{"kit_tests":{"executable":"pwsh","arguments":["-NoProfile","-File","tests/run.ps1"]}},
+  "shared_paths":["config/**","templates/**","scripts/**","**/*.schema.json","**/*lock*"],
+  "forbidden_paths":[".git/**",".codex/**",".agents/**"],
+  "generated_paths":["artifacts/**"],
+  "invariants":["Preserve existing diffs and staging state","Only one writer may edit a worktree"],
+  "heavy_work":"serial"
+}

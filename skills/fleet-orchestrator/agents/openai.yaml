@@ -1,0 +1,6 @@
+interface:
+  display_name: "Codex Fleet"
+  short_description: "Delegate independent work and integrate and verify with one writer"
+  default_prompt: "Use $fleet-orchestrator, confirm dependencies and ownership, and complete the work."
+policy:
+  allow_implicit_invocation: false

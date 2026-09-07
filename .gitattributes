@@ -1,0 +1,6 @@
+* text=auto eol=lf
+
+# GitHub source archives exclude development metadata and local-only material.
+/.local export-ignore
+/.github export-ignore
+/AGENTS.md export-ignore

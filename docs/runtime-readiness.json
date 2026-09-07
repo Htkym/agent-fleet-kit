@@ -1,0 +1,10 @@
+{
+  "format_version": 1,
+  "scope": "original automated diagnostic and comparison gates",
+  "status": "unverified",
+  "custom_agents_verified": false,
+  "lifecycle_verified": false,
+  "permissions_verified": false,
+  "model_resolution_verified": false,
+  "reason": "Local personal-use observations do not establish automated acceptance on another environment."
+}

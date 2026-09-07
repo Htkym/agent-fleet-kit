@@ -1,0 +1,9 @@
+{
+  "fleet_explorer": {"tier":"BALANCED","reasoning":"medium","sandbox":"read-only"},
+  "fleet_researcher": {"tier":"BALANCED","reasoning":"medium","sandbox":"read-only"},
+  "fleet_implementer": {"tier":"BALANCED","reasoning":"high","sandbox":"workspace-write"},
+  "fleet_verifier": {"tier":"BALANCED","reasoning":"medium","sandbox":"workspace-write"},
+  "fleet_reviewer": {"tier":"STRONG","reasoning":"high","sandbox":"read-only"},
+  "fleet_worker_fast": {"tier":"BALANCED","reasoning":"medium","sandbox":"workspace-write"},
+  "fleet_reviewer_critical": {"tier":"STRONG","reasoning":"high","sandbox":"read-only"}
+}

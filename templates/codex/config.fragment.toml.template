@@ -1,0 +1,4 @@
+# Proposal only. Merge with the existing [agents] table using a TOML-aware editor.
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 4

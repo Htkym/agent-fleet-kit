@@ -1,0 +1,190 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://fleet-kit.invalid/task-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "task-v1"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "role": {
+      "enum": [
+        "fleet_explorer",
+        "fleet_researcher",
+        "fleet_implementer",
+        "fleet_verifier",
+        "fleet_reviewer",
+        "fleet_worker_fast",
+        "fleet_reviewer_critical"
+      ]
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "commit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40,64}$"
+        },
+        "dirty_snapshot": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "commit",
+        "dirty_snapshot"
+      ]
+    },
+    "workspace": {
+      "type": "string",
+      "minLength": 1
+    },
+    "depends_on": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "ownership": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source_write": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "generated_write": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "forbidden": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "source_write",
+        "generated_write",
+        "forbidden"
+      ]
+    },
+    "acceptance": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "minItems": 1
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "command_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "command_refs"
+      ]
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "no_recursive_delegation": {
+          "const": true
+        },
+        "no_dependency_changes": {
+          "const": true
+        },
+        "no_git_history_changes": {
+          "const": true
+        },
+        "no_external_side_effects": {
+          "const": true
+        }
+      },
+      "required": [
+        "no_recursive_delegation",
+        "no_dependency_changes",
+        "no_git_history_changes",
+        "no_external_side_effects"
+      ]
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "revision_attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "revision_attempts"
+      ]
+    },
+    "return_contract": {
+      "const": "task-result-v1"
+    }
+  },
+  "required": [
+    "schema_version",
+    "task_id",
+    "run_id",
+    "task_revision",
+    "role",
+    "objective",
+    "baseline",
+    "workspace",
+    "depends_on",
+    "ownership",
+    "acceptance",
+    "verification",
+    "constraints",
+    "budget",
+    "return_contract"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "schema_version": "task-result-v1",
+  "task_id": "T-001",
+  "run_id": "R-fixture",
+  "task_revision": 1,
+  "status": "completed",
+  "summary": "Updated the greeting. Verification is pending.",
+  "observed_revision": {
+    "commit": null,
+    "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "changed_paths": [
+    "src/greeting.ps1"
+  ],
+  "evidence": [],
+  "verification": [
+    {
+      "command_ref": "unit",
+      "command": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tests/unit.ps1"
+      ],
+      "exit_code": null,
+      "status": "unverified",
+      "artifact": null,
+      "sha256": null,
+      "not_run_reason": "Not run because this is a fixture",
+      "revision": {
+        "commit": null,
+        "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "failure_class": "unverified"
+    }
+  ],
+  "risks": [
+    "Unverified"
+  ],
+  "blockers": [],
+  "requested_escalation": null
+}

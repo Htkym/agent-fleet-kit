@@ -1,0 +1,27 @@
+{
+  "schema_version": "run-state-v1",
+  "run_id": "R-fixture",
+  "task_revision": 1,
+  "baseline": {
+    "commit": null,
+    "dirty_snapshot": "baseline.json"
+  },
+  "decisions": [
+    "single writer"
+  ],
+  "tasks": [
+    {
+      "task_id": "T-001",
+      "task_revision": 1,
+      "attempt": 1,
+      "state": "planned",
+      "agent_id": null,
+      "command_ids": [],
+      "changed_paths": [],
+      "evidence": [],
+      "writer": true
+    }
+  ],
+  "unresolved": [],
+  "safe_next_action": "Check the actual file hash"
+}

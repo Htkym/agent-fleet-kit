@@ -1,0 +1,16 @@
+# All local runs, generated bundles, reports, archives and publication checks.
+/.local/
+/PUBLISH_HANDOFF.md
+
+# Legacy output locations and accidental local credentials are never public.
+/build/
+/.fleet-runs/
+/artifacts/
+/.codex/
+.env
+.env.*
+!.env.example
+auth.json
+*.dpapi
+*.pem
+*.key

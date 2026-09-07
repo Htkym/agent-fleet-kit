@@ -1,0 +1,44 @@
+{
+  "schema_version": "task-v1",
+  "task_id": "T-001",
+  "run_id": "R-fixture",
+  "task_revision": 1,
+  "role": "fleet_implementer",
+  "objective": "Update the fixture greeting",
+  "baseline": {
+    "commit": null,
+    "dirty_snapshot": "baseline.json"
+  },
+  "workspace": "D:/fixture 空白/日本語",
+  "depends_on": [],
+  "ownership": {
+    "source_write": [
+      "src/**"
+    ],
+    "generated_write": [
+      "artifacts/**"
+    ],
+    "forbidden": [
+      "src/shared/**",
+      ".git/**"
+    ]
+  },
+  "acceptance": [
+    "Confirm the greeting with the specified test"
+  ],
+  "verification": {
+    "command_refs": [
+      "unit"
+    ]
+  },
+  "constraints": {
+    "no_recursive_delegation": true,
+    "no_dependency_changes": true,
+    "no_git_history_changes": true,
+    "no_external_side_effects": true
+  },
+  "budget": {
+    "revision_attempts": 1
+  },
+  "return_contract": "task-result-v1"
+}

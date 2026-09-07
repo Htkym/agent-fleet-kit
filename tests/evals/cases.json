@@ -1,0 +1,56 @@
+{
+  "format_version": 1,
+  "cases": [
+    {
+      "id": "typo",
+      "category": "small-negative",
+      "prompt": "Change Welcom to Welcome in README.md. Preserve all other content.",
+      "files": {
+        "README.md": "Welcom to the fixture.\n",
+        "tests/check.ps1": "$ErrorActionPreference = 'Stop'\n$text = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../README.md') -Raw\nif ($text -cne \"Welcome to the fixture.`n\") { throw 'Unexpected README content' }\n"
+      },
+      "allowed": [
+        "README.md"
+      ]
+    },
+    {
+      "id": "independent",
+      "category": "parallel-exploration",
+      "prompt": "Independently inspect data/region.txt and data/version.txt, then save the applicable values in answer.json as {\"region\":\"Tokyo\",\"version\":\"7.4\"}. Do not modify the source data.",
+      "files": {
+        "data/region.txt": "unused_region_0=none\nunused_region_1=none\nunused_region_2=none\nunused_region_3=none\nunused_region_4=none\nunused_region_5=none\nunused_region_6=none\nunused_region_7=none\nunused_region_8=none\nunused_region_9=none\nunused_region_10=none\nunused_region_11=none\nunused_region_12=none\nunused_region_13=none\nunused_region_14=none\nunused_region_15=none\nunused_region_16=none\nselected_region=Tokyo\nunused_region_18=none\nunused_region_19=none\nunused_region_20=none\nunused_region_21=none\nunused_region_22=none\nunused_region_23=none\nunused_region_24=none\nunused_region_25=none\nunused_region_26=none\nunused_region_27=none\nunused_region_28=none\nunused_region_29=none\n",
+        "data/version.txt": "old_version_0=unused\nold_version_1=unused\nold_version_2=unused\nold_version_3=unused\nold_version_4=unused\nold_version_5=unused\nold_version_6=unused\nold_version_7=unused\nold_version_8=unused\nold_version_9=unused\nold_version_10=unused\nold_version_11=unused\nold_version_12=unused\nold_version_13=unused\nold_version_14=unused\nold_version_15=unused\nold_version_16=unused\nold_version_17=unused\nold_version_18=unused\nold_version_19=unused\nold_version_20=unused\nold_version_21=unused\nold_version_22=unused\nsupported_version=7.4\nold_version_24=unused\nold_version_25=unused\nold_version_26=unused\nold_version_27=unused\nold_version_28=unused\nold_version_29=unused\n",
+        "tests/check.ps1": "$ErrorActionPreference = 'Stop'\n$a = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../answer.json') -Raw | ConvertFrom-Json\nif ($a.region -cne 'Tokyo' -or $a.version -cne '7.4') { throw 'Incorrect discovery result' }\n"
+      },
+      "allowed": [
+        "answer.json"
+      ]
+    },
+    {
+      "id": "local-fix",
+      "category": "implementation",
+      "prompt": "Update Get-Total in src/Math.ps1 to return the sum of a numeric array. An empty array returns 0 and negative values are supported. Preserve the tests and public function name.",
+      "files": {
+        "src/Math.ps1": "function Get-Total([double[]]$Values) {\n    $total = 1\n    foreach ($value in $Values) { $total *= $value }\n    return $total\n}\n",
+        "tests/check.ps1": "$ErrorActionPreference = 'Stop'\n. (Join-Path $PSScriptRoot '../src/Math.ps1')\nif ((Get-Total @(2,3,4)) -ne 9 -or (Get-Total @()) -ne 0 -or (Get-Total @(-2,3)) -ne 1) { throw 'Incorrect total' }\n"
+      },
+      "allowed": [
+        "src/Math.ps1"
+      ]
+    },
+    {
+      "id": "coupled",
+      "category": "coupled-edit",
+      "prompt": "Inspect src/Label.ps1 and src/Greeting.ps1, then update Get-Greeting so that ja returns the Japanese greeting `こんにちは、<name>` and en returns `Hello, <name>`. Unknown languages fall back to en. Preserve existing function names and tests.",
+      "files": {
+        "src/Label.ps1": "function Get-Label([string]$Locale) {\n    if ($Locale -eq 'ja') { return 'Hello' }\n    return 'こんにちは'\n}\n",
+        "src/Greeting.ps1": ". (Join-Path $PSScriptRoot 'Label.ps1')\nfunction Get-Greeting([string]$Name, [string]$Locale) {\n    return (Get-Label $Locale) + ': ' + $Name\n}\n",
+        "tests/check.ps1": "$ErrorActionPreference = 'Stop'\n. (Join-Path $PSScriptRoot '../src/Greeting.ps1')\nif ((Get-Greeting 'Ada' 'ja') -cne 'こんにちは、Ada' -or (Get-Greeting 'Ada' 'en') -cne 'Hello, Ada' -or (Get-Greeting 'Ada' 'xx') -cne 'Hello, Ada') { throw 'Incorrect greeting contract' }\n"
+      },
+      "allowed": [
+        "src/Label.ps1",
+        "src/Greeting.ps1"
+      ]
+    }
+  ]
+}
