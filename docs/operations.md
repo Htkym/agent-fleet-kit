@@ -1,6 +1,6 @@
 # Generation, deployment, and rollback
 
-General usage instructions are in the [README](../README.md). This page explains management scripts and optional diagnostics.
+General usage instructions are in the [README](../README.md). This page explains the legacy project-bundle management scripts and optional Codex diagnostics. For native plugin installation, updates, and removal, use the [Plugin instructions](plugins.md). The scripts below do not manage native plugin installations or manually copied project files.
 
 ## Local files
 
@@ -18,7 +18,7 @@ pwsh -NoProfile -File scripts/install.ps1 -DestinationHome $destination -OutputP
 pwsh -NoProfile -File scripts/rollback.ps1 -DestinationHome $destination
 ```
 
-Both commands default to dry runs. They propose changes to `config.toml` and `AGENTS.md` but do not edit them automatically. Managed assets are generated Skills and Agents. Unmanaged files are never overwritten, even when identical, and manual edits to managed assets are detected.
+Both commands default to dry runs. The install plan includes proposals for `config.toml` and `AGENTS.md` but does not edit them. Rollback reports changes to assets recorded in an installation receipt. Managed assets are generated Skills and Agents. Unmanaged files are never overwritten, even when identical, and manual edits to managed assets are detected.
 
 A preview bundle rejects normal `-Apply`. `-Fixture` is only for marked disposable fixtures under `.local/runs/tests/`; it is not a deployment path for normal environments. For normal use, deploy project assets only within the scope described in the README.
 
@@ -26,7 +26,7 @@ A preview bundle rejects normal `-Apply`. `-Fixture` is only for marked disposab
 
 Change the source of truth, regenerate, and inspect the diff and verify result. Do not change the manifest to ignore manual edits to generated files.
 
-To remove a managed deployment, inspect the dry run and then run `rollback.ps1 -Apply`. An interrupted operation retains pending state and backups. After confirming that the destination has no later edits, recover with `rollback.ps1 -Apply -RecoverPending`. Links, paths outside ownership, and hash mismatches stop processing.
+Manually copied project files have no installation receipt; inspect and update or remove those files manually while preserving local edits. To remove a deployment recorded by the Kit installer, inspect the dry run and then run `rollback.ps1 -Apply`. An interrupted operation retains pending state and backups. After confirming that the destination has no later edits, recover with `rollback.ps1 -Apply -RecoverPending`. Links, paths outside ownership, and hash mismatches stop processing.
 
 ## Optional diagnostics
 

@@ -1,7 +1,6 @@
 # Fleet Kit plugins
 
-This directory is a self-contained distribution. Publish or archive the entire
-directory, including hidden `.agents` and `.github` marketplace catalogs, without
+These instructions apply to the self-contained plugin distribution, either extracted from the release ZIP or generated at `.local/build/plugins`. Run installation commands from its root, where `plugins/` and `package-manifest.json` are located, not from the source repository root. Publish or archive the entire distribution directory, including hidden `.agents` and `.github` marketplace catalogs, without
 depending on the source Kit or its `.local` directory. Do not publish local
 authentication homes, test fixtures, raw logs, or runtime session records.
 

@@ -1,10 +1,10 @@
 # Contributing
 
-Report defects in an issue with reproduction conditions, expected and actual behavior, and your Windows, PowerShell, and Codex CLI versions. Do not attach credentials, personal configuration contents, or raw run logs. Follow [SECURITY.md](SECURITY.md) to report vulnerabilities.
+Report defects in an issue with reproduction conditions, expected and actual behavior, and your Windows, PowerShell, and the relevant Codex or Copilot CLI version. Do not attach credentials, personal configuration contents, or raw run logs. Follow [SECURITY.md](SECURITY.md) to report vulnerabilities.
 
 ## Changes and checks
 
-Edit the source of truth in `skills/`, `agent-src/`, `policies/`, and `config/`, not generated TOML. Prefer standard features and existing code, keep changes limited to what is necessary, preserve existing diffs, and allow only one editor in a worktree at a time.
+Edit the source of truth in `skills/`, `agent-src/`, `policies/`, and `config/`, not generated plugin files or Agent definitions. Prefer standard features and existing code, keep changes limited to what is necessary, preserve existing diffs, and allow only one editor in a worktree at a time.
 
 The Copilot-specific procedure is in `skills-copilot/`; its Agent template is in `templates/copilot/`. Shared contracts and specialist procedures are not duplicated. Do not edit generated Markdown profiles.
 
@@ -24,4 +24,4 @@ These checks require neither sign-in nor an API key. Do not commit `.local/`. Te
 
 In pull requests, describe changed behavior, rationale, checks performed, and unverified scope. Add dependencies, configuration, or abstractions only when necessary.
 
-CI pins [actions/checkout](https://github.com/actions/checkout) to a commit SHA and runs the three commands above with read-only permissions. It does not run authenticated inference or publish raw logs as artifacts.
+CI pins [actions/checkout](https://github.com/actions/checkout) to a commit SHA and runs all the commands above with read-only permissions. It does not run authenticated inference or publish raw logs as artifacts.
