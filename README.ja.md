@@ -1,6 +1,28 @@
-# Codex Fleet Kit
+# Fleet Kit
 
 [English](README.md)
+
+## Pluginとして配布する
+
+[GitHub Release](https://github.com/Htkym/agent-fleet-kit/releases/tag/v0.1.0)から`fleet-kit-plugins-0.1.0.zip`をダウンロードし、全体を展開して同梱のREADMEに従ってください。両CLIの隠しディレクトリにあるMarketplaceカタログも含まれます。ソースから生成する場合は、次を実行します。
+
+```powershell
+pwsh -NoProfile -File .\scripts\package.ps1
+pwsh -NoProfile -File .\scripts\package.ps1 -VerifyOnly
+```
+
+`.local\build\plugins`に、`fleet-codex`・`fleet-copilot`と両CLIのMarketplaceカタログを生成します。このディレクトリ全体を配布できます。Copilot版は7つのネイティブAgentを含みます。Codex Pluginは名前付きTOML Agentを登録できないため、7役割の契約をSkill内に同梱してネイティブの子Agentへ渡します。[Plugin導入・配布手順](docs/plugins.md)を参照してください。
+
+## Copilot CLI版
+
+Copilot CLI向けの3 Skill・7 Agentも生成できます。Codex版を置き換えず、Copilot用の配置形式とツール操作に対応します。
+
+```powershell
+pwsh -NoProfile -File .\scripts\render.ps1 -Target Copilot -Preview
+pwsh -NoProfile -File .\scripts\verify.ps1 -Bundle .\.local\build\copilot-preview
+```
+
+生成先は`.local\build\copilot-preview\payload\.github\`です。対象プロジェクトへ必要な`skills`と`agents`を衝突確認後にコピーし、Copilotで`/skills reload`、`/skills info fleet-orchestrator`と`/agent`から読み込みを確認します。依頼には`/fleet-orchestrator`を指定します。モデルはCopilotの設定を継承し、Codexのモデル・sandbox設定は流用しません。このプロジェクト配置用bundleは自動インストール不可のpreviewのままです。ネイティブPlugin版では7役割の実行を確認しており、[実機結果と制限](docs/plugins.md#local-runtime-observations-2026-09-07)を別途記録しています。既存Codex Skillとの同名衝突、配置・更新手順は[Copilot CLI版の手順](docs/copilot-cli.md)を参照してください。以下は従来のCodex版の説明です。
 
 ## これは何か
 

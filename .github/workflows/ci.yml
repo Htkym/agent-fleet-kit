@@ -25,3 +25,11 @@ jobs:
         run: ./scripts/render.ps1 -Preview
       - name: Verify generated bundle
         run: ./scripts/verify.ps1
+      - name: Generate Copilot preview
+        run: ./scripts/render.ps1 -Target Copilot -Preview
+      - name: Verify Copilot bundle
+        run: ./scripts/verify.ps1 -Bundle .local/build/copilot-preview
+      - name: Package plugins
+        run: ./scripts/package.ps1
+      - name: Verify plugin distribution
+        run: ./scripts/package.ps1 -VerifyOnly

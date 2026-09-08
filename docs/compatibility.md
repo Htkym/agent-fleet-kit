@@ -2,6 +2,8 @@
 
 This records local verification as of 2026-09-07. Behavior can vary with CLI updates, the models available to an account, and higher-level configuration.
 
+The table below records the original Codex project edition. Separate [Plugin runtime observations](plugins.md#local-runtime-observations-2026-09-07) now cover Copilot CLI `1.0.84-1` native seven-Agent execution with `gpt-5.6-luna`, and Codex CLI `0.153.4` Plugin installation and app-server Skill discovery without inference. These do not establish OS-enforced permission isolation or compatibility with every model/environment. Codex evidence is not reused as proof of Copilot execution.
+
 | Item | Verified scope |
 |---|---|
 | OS / PowerShell | Windows 10.0.26200 / PowerShell 7.6.5; scripts require 7.4 or later |

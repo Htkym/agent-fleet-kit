@@ -7,4 +7,4 @@ Do not run the same operation again until confirming side effects from unfinishe
 When requirements change, update `task_revision`, stop affected children, and assign them again.
 Keep stale artifacts as evidence, but do not reuse them as success under current requirements.
 When availability is exhausted, stop new launches and retain recoverable results and the next required action.
-`/btw` conversations and lockfiles are not the source of truth for work state.
+Side conversations and lockfiles are not the source of truth for work state.

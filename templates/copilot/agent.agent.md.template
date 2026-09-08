@@ -1,0 +1,19 @@
+---
+name: {{name}}
+description: {{description}}
+tools: {{tools}}
+---
+
+{{instructions}}
+
+## Copilot CLI adapter
+
+Use only tools actually exposed by this session, within the parent's assignment.
+No Agent in this Kit receives the `agent` tool alias; do not recursively delegate.
+Read-only roles have no shell or edit tools. If Git inspection or reproduction
+requires execution, return the exact request to Root rather than bypassing the tool list.
+Verifier has shell access for authorized tests and output locations, not source edits.
+Shell access can write files: tool lists are not an OS sandbox.
+Do not change CLI permissions, model settings, or global configuration.
+When repository instructions request Ponytail for implementation and it is available,
+apply it without weakening the task contract or required validation.

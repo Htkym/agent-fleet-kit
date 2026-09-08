@@ -266,12 +266,73 @@ function Invoke-FleetProcess([string]$Executable, [string[]]$Arguments, [string]
     } finally { $process.Dispose() }
 }
 
+function Get-FleetManagedPathPattern([string]$Target = 'Codex') {
+    switch ($Target) {
+        'Codex' { '^\.codex/agents/fleet_(explorer|researcher|implementer|verifier|reviewer|worker_fast|reviewer_critical)\.toml$|^\.agents/skills/(fleet-orchestrator|evidence-review|benchmark-lab)/' }
+        'Copilot' { '^\.github/agents/fleet_(explorer|researcher|implementer|verifier|reviewer|worker_fast|reviewer_critical)\.agent\.md$|^\.github/skills/(fleet-orchestrator|evidence-review|benchmark-lab)/' }
+        default { throw 'Unsupported bundle target' }
+    }
+}
+
+function Get-FleetPluginSources([string]$KitRoot) {
+    foreach ($folder in @('policies','agent-src','config','templates','skills','skills-copilot','scripts')) {
+        foreach ($file in Get-FleetFiles (Join-Path $KitRoot $folder) | Sort-Object FullName) {
+            @{path=[IO.Path]::GetRelativePath($KitRoot,$file.FullName).Replace('\','/');sha256=(Get-FleetHash $file.FullName)}
+        }
+    }
+    foreach ($path in @('VERSION','LICENSE','docs/plugins.md')) { @{path=$path;sha256=(Get-FleetHash (Resolve-FleetPath $KitRoot $path))} }
+}
+
+function Get-FleetPluginPackage([string]$Directory) {
+    $manifestPath = Resolve-FleetPath $Directory 'package-manifest.json'
+    $digest = Resolve-FleetPath $Directory 'package-manifest.sha256'
+    if (-not (Test-Path -LiteralPath $digest) -or [IO.File]::ReadAllText($digest).Trim() -cne (Get-FleetHash $manifestPath)) { throw 'Plugin package manifest changed or missing' }
+    $manifest = Read-FleetJson $manifestPath
+    if ($manifest.format_version -ne 1 -or $manifest.runtime_verified -isnot [bool] -or $manifest.runtime_verified) { throw 'Invalid plugin package manifest' }
+    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $roles = @('fleet_explorer','fleet_researcher','fleet_implementer','fleet_verifier','fleet_reviewer','fleet_worker_fast','fleet_reviewer_critical')
+    foreach ($entry in $manifest.files) {
+        if (-not $seen.Add($entry.path)) { throw 'Duplicate plugin package path' }
+        if ($entry.path -notmatch '^README\.md$|^\.(agents/plugins|github/plugin)/marketplace\.json$|^plugins/fleet-(codex|copilot)/(LICENSE|plugin\.json|\.codex-plugin/plugin\.json)$|^plugins/fleet-copilot/agents/fleet_\w+\.agent\.md$|^plugins/fleet-(codex|copilot)/skills/(fleet-orchestrator|evidence-review|benchmark-lab)/') { throw 'Unmanaged plugin package path' }
+        if ((Get-FleetHash (Resolve-FleetPath $Directory $entry.path)) -cne $entry.sha256) { throw "Plugin package file changed: $($entry.path)" }
+    }
+    $required = @('README.md','.agents/plugins/marketplace.json','.github/plugin/marketplace.json')
+    foreach ($edition in @('codex','copilot')) {
+        $prefix = "plugins/fleet-$edition"
+        $pluginManifestPath = if ($edition -eq 'codex') { "$prefix/.codex-plugin/plugin.json" } else { "$prefix/plugin.json" }
+        $required += @($pluginManifestPath,"$prefix/LICENSE")
+        $plugin = Read-FleetJson (Resolve-FleetPath $Directory $pluginManifestPath)
+        if ($plugin.name -cne "fleet-$edition" -or $plugin.version -cne $manifest.version -or $plugin.skills -cne './skills/') { throw 'Invalid native plugin manifest' }
+        if ($edition -eq 'codex' -and $plugin.ContainsKey('agents')) { throw 'Codex plugins cannot register named agents' }
+        if ($edition -eq 'copilot' -and $plugin.agents -cne './agents/') { throw 'Copilot Agent directory missing' }
+        foreach ($skill in @('fleet-orchestrator','evidence-review','benchmark-lab')) { $required += "$prefix/skills/$skill/SKILL.md" }
+        foreach ($resource in @('delegation-contract.md','ownership-and-worktrees.md','recovery.md','debugging.md')) { $required += "$prefix/skills/fleet-orchestrator/references/$resource" }
+        foreach ($schema in @('task','task-result','run-state')) { $required += "$prefix/skills/fleet-orchestrator/assets/$schema.schema.json" }
+        foreach ($role in $roles) {
+            $required += if ($edition -eq 'codex') { "$prefix/skills/fleet-orchestrator/references/agents/$role.md" } else { "$prefix/agents/$role.agent.md" }
+        }
+    }
+    foreach ($path in $required) { if (-not $seen.Contains($path)) { throw "Plugin resource missing: $path" } }
+    foreach ($file in Get-FleetFiles $Directory) {
+        $relative = [IO.Path]::GetRelativePath($Directory,$file.FullName).Replace('\','/')
+        if ($relative -notin @('package-manifest.json','package-manifest.sha256') -and -not $seen.Contains($relative)) { throw "Untracked plugin package file: $relative" }
+    }
+    $manifest
+}
+
 function Get-FleetManifest([string]$Bundle) {
     $path = Resolve-FleetPath $Bundle 'manifest.json'
     $digestPath = Resolve-FleetPath $Bundle 'manifest.sha256'
     if (-not (Test-Path -LiteralPath $digestPath) -or [IO.File]::ReadAllText($digestPath).Trim() -cne (Get-FleetHash $path)) { throw 'Manifest was modified or has no digest' }
     $manifest = Read-FleetJson $path
     if ($manifest.format_version -ne 1 -or $manifest.files.Count -lt 6) { throw 'Invalid bundle manifest' }
+    $target = if ($manifest.ContainsKey('target')) { $manifest.target } else { 'Codex' }
+    $allowedDestination = Get-FleetManagedPathPattern $target
+    $isCopilot = $target -eq 'Copilot'
+    if ($isCopilot -and ($manifest.renderer_version -ne 2 -or $manifest.installable)) { throw 'Copilot bundles must be non-installable renderer v2 previews' }
+    $agentPrefix = if ($isCopilot) { '.github/agents' } else { '.codex/agents' }
+    $agentSuffix = if ($isCopilot) { 'agent.md' } else { 'toml' }
+    $skillPrefix = if ($isCopilot) { '.github/skills' } else { '.agents/skills' }
     $roles = @('fleet_explorer','fleet_researcher','fleet_implementer','fleet_verifier','fleet_reviewer')
     $skills = @('fleet-orchestrator')
     if ($manifest.renderer_version -eq 2) {
@@ -295,14 +356,17 @@ function Get-FleetManifest([string]$Bundle) {
     $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($entry in $manifest.files) {
         if (-not $seen.Add($entry.path)) { throw 'Duplicate manifest destination' }
-        if ($entry.path -notmatch '^\.codex/agents/fleet_(explorer|researcher|implementer|verifier|reviewer|worker_fast|reviewer_critical)\.toml$|^\.agents/skills/(fleet-orchestrator|evidence-review|benchmark-lab)/') { throw 'Unmanaged destination refused' }
+        if ($entry.path -notmatch $allowedDestination) { throw 'Unmanaged destination refused' }
         $file = Resolve-FleetPath $Bundle ("payload/" + $entry.path)
         if ((Get-FleetHash $file) -cne $entry.sha256) { throw "Generated file modified: $($entry.path)" }
     }
-    foreach ($role in $roles) { if (".codex/agents/$role.toml" -notin $manifest.files.path) { throw "Missing Agent: $role" } }
-    foreach ($skill in $skills) { if (".agents/skills/$skill/SKILL.md" -notin $manifest.files.path) { throw "Missing Skill: $skill" } }
-    foreach ($required in @('SKILL.md','agents/openai.yaml','assets/task.schema.json','assets/task-result.schema.json','assets/run-state.schema.json')) {
-        if (".agents/skills/fleet-orchestrator/$required" -notin $manifest.files.path) { throw "Missing Skill resource: $required" }
+    foreach ($role in $roles) { if ("$agentPrefix/$role.$agentSuffix" -notin $manifest.files.path) { throw "Missing Agent: $role" } }
+    foreach ($skill in $skills) { if ("$skillPrefix/$skill/SKILL.md" -notin $manifest.files.path) { throw "Missing Skill: $skill" } }
+    $requiredResources = @('SKILL.md','assets/task.schema.json','assets/task-result.schema.json','assets/run-state.schema.json')
+    if (-not $isCopilot) { $requiredResources += 'agents/openai.yaml' }
+    else { $requiredResources += @('references/delegation-contract.md','references/ownership-and-worktrees.md','references/recovery.md','references/debugging.md') }
+    foreach ($required in $requiredResources) {
+        if ("$skillPrefix/fleet-orchestrator/$required" -notin $manifest.files.path) { throw "Missing Skill resource: $required" }
     }
     $payloadRoot = Resolve-FleetPath $Bundle 'payload'
     foreach ($file in Get-FleetFiles $payloadRoot) {
@@ -364,6 +428,7 @@ function Invoke-FleetInstall([string]$Bundle, [string]$DestinationHome, [switch]
     $pendingPath = Resolve-FleetPath $root '.agents/fleet/manifests/pending.json'
     $id = [guid]::NewGuid().ToString('N')
     $journal = @{format_version=1;transaction_id=$id;files=@();previous_receipt=$plan.previous_receipt;bundle_sha256=(Get-FleetHash (Join-Path $Bundle 'manifest.json'))}
+    $journal.target = if ($plan.manifest.ContainsKey('target')) { $plan.manifest.target } else { 'Codex' }
     foreach ($entry in $changes) {
         $target = Resolve-FleetPath $root $entry.path
         $backup = $null
@@ -391,6 +456,7 @@ function Invoke-FleetInstall([string]$Bundle, [string]$DestinationHome, [switch]
             $count++
         }
         $receipt = @{format_version=1;transaction_id=$id;files=$plan.manifest.files;bundle_sha256=$journal.bundle_sha256;fixture=[bool]$Fixture}
+        $receipt.target = $journal.target
         Write-FleetJson $receiptPath $receipt
         Remove-Item -LiteralPath $pendingPath
         @{status='installed';files=$plan.files;receipt=$receiptPath}
@@ -406,9 +472,11 @@ function Undo-FleetPending([string]$DestinationHome) {
     $pendingPath = Resolve-FleetPath $root '.agents/fleet/manifests/pending.json'
     $journal = Read-FleetJson $pendingPath
     if ($journal.format_version -ne 1 -or $journal.transaction_id -notmatch '^[a-f0-9]{32}$') { throw 'Invalid recovery journal' }
+    $bundleTarget = if ($journal.ContainsKey('target')) { $journal.target } else { 'Codex' }
+    $allowedDestination = Get-FleetManagedPathPattern $bundleTarget
     # Preflight the whole transaction before changing any file.
     foreach ($entry in $journal.files) {
-        if ($entry.path -notmatch '^\.codex/agents/fleet_(explorer|researcher|implementer|verifier|reviewer|worker_fast|reviewer_critical)\.toml$|^\.agents/skills/(fleet-orchestrator|evidence-review|benchmark-lab)/') { throw 'Recovery path outside managed scope' }
+        if ($entry.path -notmatch $allowedDestination) { throw 'Recovery path outside managed scope' }
         $current = Get-FleetHash (Resolve-FleetPath $root $entry.path)
         if ($current -cne $entry.before -and $current -cne $entry.after) { throw "User edit prevents recovery: $($entry.path)" }
         if ($entry.before) {
@@ -438,13 +506,16 @@ function Invoke-FleetRollback([string]$DestinationHome, [switch]$Apply, [int]$Fa
     if (-not (Test-Path -LiteralPath $receiptPath)) { return @{status='not-installed';files=@()} }
     $receipt = Read-FleetJson $receiptPath
     if ($receipt.format_version -ne 1) { throw 'Invalid receipt' }
+    $bundleTarget = if ($receipt.ContainsKey('target')) { $receipt.target } else { 'Codex' }
+    $allowedDestination = Get-FleetManagedPathPattern $bundleTarget
     foreach ($entry in $receipt.files) {
-        if ($entry.path -notmatch '^\.codex/agents/fleet_(explorer|researcher|implementer|verifier|reviewer|worker_fast|reviewer_critical)\.toml$|^\.agents/skills/(fleet-orchestrator|evidence-review|benchmark-lab)/') { throw 'Rollback path outside managed scope' }
+        if ($entry.path -notmatch $allowedDestination) { throw 'Rollback path outside managed scope' }
         if ((Get-FleetHash (Resolve-FleetPath $root $entry.path)) -cne $entry.sha256) { throw "User edit prevents rollback: $($entry.path)" }
     }
     if ($Apply) {
         $id = [guid]::NewGuid().ToString('N')
         $journal = @{format_version=1;transaction_id=$id;files=@();previous_receipt=$receipt;bundle_sha256=$receipt.bundle_sha256}
+        $journal.target = $bundleTarget
         foreach ($entry in $receipt.files) {
             $target = Resolve-FleetPath $root $entry.path
             $backup = ".agents/fleet/backups/$id/$($entry.path)"

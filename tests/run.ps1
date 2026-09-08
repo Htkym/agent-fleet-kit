@@ -249,6 +249,206 @@ Check 'regeneration is byte-identical and preserves mtime' @('A30') {
     Assert ((Get-FleetHash $manifestPath) -ceq $before) 'Generation not deterministic'
     Assert ((Get-Item -LiteralPath $manifestPath).LastWriteTimeUtc -eq $mtime) 'Identical generation changed mtime'
 }
+$copilotBundle = Join-Path $runRoot 'copilot-bundle'
+Check 'Copilot preview generates portable skills and bounded agents' @('A06','A09','A19') {
+    $run = Invoke-FleetProcess $pwshPath @('-NoProfile','-File',(Join-Path $kitRoot 'scripts/render.ps1'),'-Target','Copilot','-Preview','-OutputDirectory',$copilotBundle) $kitRoot
+    Assert ($run.exit_code -eq 0) $run.stderr
+    $manifest = Get-FleetManifest $copilotBundle
+    Assert ($manifest.target -eq 'Copilot' -and -not $manifest.installable -and $null -eq $manifest.model_map_sha256) 'Copilot inherited Codex runtime claims'
+    Assert (@($manifest.files | Where-Object path -Like '.github/agents/*.agent.md').Count -eq 7) 'Copilot Agent count mismatch'
+    Assert (@($manifest.files | Where-Object path -Like '.github/skills/*/SKILL.md').Count -eq 3) 'Copilot Skill count mismatch'
+    Assert (@($manifest.files | Where-Object path -NotLike '.github/*').Count -eq 0) 'Non-Copilot destination'
+    Assert (@($manifest.files | Where-Object path -Like '*/openai.yaml').Count -eq 0) 'OpenAI metadata copied'
+    foreach ($entry in $manifest.files | Where-Object path -Like '*.agent.md') {
+        $text = [IO.File]::ReadAllText((Join-Path $copilotBundle "payload/$($entry.path)"))
+        Assert ($text -match '(?s)^---\r?\nname: fleet_\w+\r?\ndescription: [^\r\n]+\r?\ntools: (\[[^\r\n]+\])\r?\n---') 'Invalid Agent frontmatter'
+        $tools = @($Matches[1] | ConvertFrom-Json)
+        Assert ('agent' -notin $tools -and '*' -notin $tools) 'Recursive delegation enabled'
+        Assert ($text -notmatch '(?m)^(model|sandbox_mode|model_reasoning_effort):' -and $text -notmatch '\.agents/skills/') 'Codex profile configuration copied'
+        $role = [IO.Path]::GetFileName($entry.path).Replace('.agent.md','')
+        if ($role -in @('fleet_explorer','fleet_researcher','fleet_reviewer','fleet_reviewer_critical')) {
+            Assert ('edit' -notin $tools -and 'execute' -notin $tools) 'Read-only role can edit or execute'
+        } elseif ($role -eq 'fleet_verifier') {
+            Assert ('execute' -in $tools -and 'edit' -notin $tools) 'Verifier tool mismatch'
+        } else { Assert ('edit' -in $tools -and 'execute' -in $tools) 'Writer tool mismatch' }
+        Assert ($text.Contains('Common contract embedded in children') -and $text.Contains('Do not recursively delegate')) 'Common contract missing'
+    }
+    $skillPath = Join-Path $copilotBundle 'payload/.github/skills/fleet-orchestrator/SKILL.md'
+    $skill = [IO.File]::ReadAllText($skillPath)
+    Assert ($skill.Contains('Copilot CLI') -and $skill.Contains('read_agent') -and -not $skill.Contains('Runtimes other than Codex')) 'Wrong orchestration procedure'
+    foreach ($match in [regex]::Matches($skill, '\]\(([^)]+)\)')) {
+        Assert (Test-Path -LiteralPath (Join-Path (Split-Path $skillPath -Parent) $match.Groups[1].Value)) "Broken Skill link: $($match.Groups[1].Value)"
+    }
+    foreach ($skillName in @('evidence-review','benchmark-lab')) {
+        Assert ((Get-FleetHash (Join-Path $copilotBundle "payload/.github/skills/$skillName/SKILL.md")) -ceq (Get-FleetHash (Join-Path $kitRoot "skills/$skillName/SKILL.md"))) 'Shared specialist procedure diverged'
+    }
+}
+Check 'Copilot generation is deterministic and target-isolated' @('A30','A31') {
+    $manifestPath = Join-Path $copilotBundle 'manifest.json'
+    $before = Get-FleetHash $manifestPath
+    $codexBefore = Get-FleetHash (Join-Path $bundle 'manifest.json')
+    $mtime = (Get-Item -LiteralPath $manifestPath).LastWriteTimeUtc
+    $run = Invoke-FleetProcess $pwshPath @('-NoProfile','-File',(Join-Path $kitRoot 'scripts/render.ps1'),'-Target','Copilot','-Preview','-OutputDirectory',$copilotBundle) $kitRoot
+    Assert ($run.exit_code -eq 0) $run.stderr
+    Assert ((Get-FleetHash $manifestPath) -ceq $before -and (Get-Item -LiteralPath $manifestPath).LastWriteTimeUtc -eq $mtime) 'Copilot regeneration changed bytes or mtime'
+    foreach ($pair in @(@('Copilot',$bundle),@('Codex',$copilotBundle))) {
+        $run = Invoke-FleetProcess $pwshPath @('-NoProfile','-File',(Join-Path $kitRoot 'scripts/render.ps1'),'-Target',$pair[0],'-Preview','-OutputDirectory',$pair[1]) $kitRoot
+        Assert ($run.exit_code -ne 0 -and $run.stderr.Contains('Bundle target changed')) 'Cross-target overwrite accepted'
+    }
+    Assert ((Get-FleetHash $manifestPath) -ceq $before -and (Get-FleetHash (Join-Path $bundle 'manifest.json')) -ceq $codexBefore) 'Target isolation failed'
+}
+Check 'Copilot static verification refuses unsupported runtime paths' @('A09','A10') {
+    $run = Invoke-FleetProcess $pwshPath @('-NoProfile','-File',(Join-Path $kitRoot 'scripts/verify.ps1'),'-Bundle',$copilotBundle) $kitRoot
+    Assert ($run.exit_code -eq 0) $run.stderr
+    $run = Invoke-FleetProcess $pwshPath @('-NoProfile','-File',(Join-Path $kitRoot 'scripts/verify.ps1'),'-Bundle',$copilotBundle,'-Smoke') $kitRoot
+    Assert ($run.exit_code -ne 0 -and $run.stderr.Contains('Copilot runtime smoke is not implemented')) 'Codex smoke accepted for Copilot'
+    $run = Invoke-FleetProcess $pwshPath @('-NoProfile','-File',(Join-Path $kitRoot 'scripts/render.ps1'),'-Target','Copilot','-OutputDirectory',$copilotBundle) $kitRoot
+    Assert ($run.exit_code -ne 0 -and $run.stderr.Contains('Copilot runtime is unverified')) 'Copilot production generation accepted'
+    $run = Invoke-FleetProcess $pwshPath @('-NoProfile','-File',(Join-Path $kitRoot 'scripts/render.ps1'),'-Target','Copilot','-Preview','-ModelTiers',(Join-Path $kitRoot 'config/model-tiers.example.yaml'),'-OutputDirectory',$copilotBundle) $kitRoot
+    Assert ($run.exit_code -ne 0 -and $run.stderr.Contains('ModelTiers is Codex-only')) 'Codex model map silently ignored'
+}
+Check 'Copilot install safeguards and rollback preserve unrelated files' @('A15','A24','A30') {
+    $homePath = New-TestHome 'copilot project'
+    $unrelated = Join-Path $homePath '.github/copilot-instructions.md'
+    Write-FleetText $unrelated 'existing project instructions'
+    $before = Get-FleetHash $unrelated
+    $count = @(Get-FleetFiles $homePath).Count
+    $null = Get-FleetInstallPlan $copilotBundle $homePath
+    Assert (@(Get-FleetFiles $homePath).Count -eq $count) 'Copilot dry run mutated destination'
+    Reject { Invoke-FleetInstall $copilotBundle $homePath } 'Copilot preview auto-installed'
+    Reject { Invoke-FleetInstall $copilotBundle $homePath -Fixture -FailAfter 2 } 'Copilot failure injection did not fail'
+    Assert (-not (Test-Path (Join-Path $homePath '.github/agents/fleet_explorer.agent.md'))) 'Partial Copilot install left payload'
+    $null = Invoke-FleetInstall $copilotBundle $homePath -Fixture
+    $again = Invoke-FleetInstall $copilotBundle $homePath -Fixture
+    Assert ($again.status -eq 'unchanged') 'Copilot install not idempotent'
+    Reject { Invoke-FleetRollback $homePath -Apply -FailAfter 2 } 'Copilot rollback injection did not fail'
+    $null = Undo-FleetPending $homePath
+    $plan = Get-FleetInstallPlan $copilotBundle $homePath
+    Assert (@($plan.files | Where-Object action -NE 'unchanged').Count -eq 0) 'Copilot rollback recovery failed'
+    $null = Invoke-FleetRollback $homePath -Apply
+    Assert ((Get-FleetHash $unrelated) -ceq $before) 'Copilot rollback changed unrelated instructions'
+    $collision = Join-Path $homePath '.github/agents/fleet_explorer.agent.md'
+    Write-FleetText $collision 'user Agent'
+    Reject { Get-FleetInstallPlan $copilotBundle $homePath } 'Copilot collision accepted'
+    Assert ([IO.File]::ReadAllText($collision) -ceq 'user Agent') 'Copilot collision destroyed user file'
+}
+Check 'Copilot recovery retains later user edits and rejects unrelated paths' @('A24','A31') {
+    $homePath = New-TestHome 'copilot pending edit'
+    $null = Invoke-FleetInstall $copilotBundle $homePath -Fixture
+    Reject { Invoke-FleetRollback $homePath -Apply -FailAfter 1 } 'Missing Copilot rollback injection'
+    $journalPath = Join-Path $homePath '.agents/fleet/manifests/pending.json'
+    $journal = Read-FleetJson $journalPath
+    Assert ($journal.target -eq 'Copilot') 'Copilot journal target missing'
+    $changed = Resolve-FleetPath $homePath $journal.files[0].path
+    Write-FleetText $changed 'later user edit'
+    Reject { Undo-FleetPending $homePath } 'Copilot recovery destroyed user edit'
+    Assert ([IO.File]::ReadAllText($changed) -ceq 'later user edit') 'Copilot later edit lost'
+    $journal.files[0].path = '.github/copilot-instructions.md'
+    Write-FleetJson $journalPath $journal
+    Reject { Undo-FleetPending $homePath } 'Copilot recovery accepted unrelated configuration'
+}
+Check 'Copilot manifests reject tampering and cross-target destinations' @('A13','A31','A32') {
+    $file = Join-Path $copilotBundle 'payload/.github/agents/fleet_explorer.agent.md'
+    $original = [IO.File]::ReadAllBytes($file)
+    try {
+        Write-FleetText $file 'user edit'
+        Reject { Get-FleetManifest $copilotBundle } 'Copilot generated edit accepted'
+        $run = Invoke-FleetProcess $pwshPath @('-NoProfile','-File',(Join-Path $kitRoot 'scripts/render.ps1'),'-Target','Copilot','-Preview','-OutputDirectory',$copilotBundle) $kitRoot
+        Assert ($run.exit_code -ne 0 -and [IO.File]::ReadAllText($file) -ceq 'user edit') 'Copilot regeneration destroyed edit'
+    } finally { [IO.File]::WriteAllBytes($file,$original) }
+    $manifestPath = Join-Path $copilotBundle 'manifest.json'
+    $original = [IO.File]::ReadAllBytes($manifestPath)
+    foreach ($mutation in @('duplicate','traversal','codex','installable','target','missing-reference')) {
+        try {
+            $manifest = Read-FleetJson $manifestPath
+            switch ($mutation) {
+                'duplicate' { $manifest.files += Clone $manifest.files[0] }
+                'traversal' { $manifest.files[0].path = '.github/skills/fleet-orchestrator/../../../outside.md' }
+                'codex' { $manifest.files[0].path = '.codex/agents/fleet_explorer.toml' }
+                'installable' { $manifest.installable = $true }
+                'target' { $manifest.target = 'Other' }
+                'missing-reference' { $manifest.files = @($manifest.files | Where-Object path -NotLike '*/references/delegation-contract.md') }
+            }
+            Write-FleetJson $manifestPath $manifest
+            Write-FleetText (Join-Path $copilotBundle 'manifest.sha256') (Get-FleetHash $manifestPath)
+            Reject { Get-FleetManifest $copilotBundle } "Copilot manifest accepted: $mutation"
+        } finally {
+            [IO.File]::WriteAllBytes($manifestPath,$original)
+            Write-FleetText (Join-Path $copilotBundle 'manifest.sha256') (Get-FleetHash $manifestPath)
+        }
+    }
+}
+$pluginPackage = Join-Path $runRoot 'plugin-distribution'
+Check 'native plugin packages include portable resources and marketplace catalogs' @('A06','A09','A19') {
+    $run = Invoke-FleetProcess $pwshPath @('-NoProfile','-File',(Join-Path $kitRoot 'scripts/package.ps1'),'-OutputDirectory',$pluginPackage) $kitRoot
+    Assert ($run.exit_code -eq 0) $run.stderr
+    $manifest = Get-FleetPluginPackage $pluginPackage
+    Assert (-not $manifest.runtime_verified -and $manifest.files.Count -eq 41) 'Unexpected plugin payload or runtime claim'
+    $codexCatalog = Read-FleetJson (Join-Path $pluginPackage '.agents/plugins/marketplace.json')
+    $copilotCatalog = Read-FleetJson (Join-Path $pluginPackage '.github/plugin/marketplace.json')
+    Assert ($codexCatalog.name -ceq 'fleet-kit-codex' -and $codexCatalog.plugins[0].source.path -ceq './plugins/fleet-codex') 'Codex marketplace does not resolve from distribution root'
+    Assert ($copilotCatalog.name -ceq 'fleet-kit-copilot' -and $copilotCatalog.plugins[0].source -ceq './plugins/fleet-copilot') 'Copilot marketplace does not resolve from distribution root'
+    $codex = [IO.File]::ReadAllText((Join-Path $pluginPackage 'plugins/fleet-codex/skills/fleet-orchestrator/SKILL.md'))
+    Assert ($codex.Contains('not automatically registered named Agents') -and -not $codex.Contains('.agents/skills/')) 'Codex plugin assumes project agents or paths'
+    Assert ($codex.Contains('Inherit authorized session models') -and -not $codex.Contains('Read concrete IDs from the verified mapping')) 'Codex plugin depends on absent model map'
+    $copilot = [IO.File]::ReadAllText((Join-Path $pluginPackage 'plugins/fleet-copilot/skills/fleet-orchestrator/SKILL.md'))
+    Assert ($copilot.Contains('../../agents/<role>.agent.md') -and $copilot.Contains('fleet-copilot:<role>')) 'Copilot plugin profiles are not discoverable from the Skill'
+    foreach ($edition in @('codex','copilot')) {
+        $criticalPath = if ($edition -eq 'codex') {
+            "plugins/fleet-$edition/skills/fleet-orchestrator/references/agents/fleet_reviewer_critical.md"
+        } else { "plugins/fleet-$edition/agents/fleet_reviewer_critical.agent.md" }
+        $criticalFile = Join-Path $pluginPackage $criticalPath
+        $critical = [IO.File]::ReadAllText($criticalFile)
+        Assert ($critical -match '`(\.\./[^`]+evidence-review/SKILL\.md)`') 'Critical reviewer has no plugin-relative evidence Skill'
+        Assert (Test-Path -LiteralPath (Join-Path (Split-Path $criticalFile -Parent) $Matches[1])) 'Critical reviewer relative Skill path is broken'
+    }
+    $copy = Join-Path $runRoot 'relocated-distribution'
+    Copy-Item -LiteralPath $pluginPackage -Destination $copy -Recurse
+    $null = Get-FleetPluginPackage $copy
+}
+Check 'plugin regeneration is deterministic and verify-only rejects stale source claims' @('A30','A31') {
+    $path = Join-Path $pluginPackage 'package-manifest.json'
+    $hash = Get-FleetHash $path
+    $mtime = (Get-Item -LiteralPath $path).LastWriteTimeUtc
+    $run = Invoke-FleetProcess $pwshPath @('-NoProfile','-File',(Join-Path $kitRoot 'scripts/package.ps1'),'-OutputDirectory',$pluginPackage) $kitRoot
+    Assert ($run.exit_code -eq 0) $run.stderr
+    Assert ((Get-FleetHash $path) -ceq $hash -and (Get-Item -LiteralPath $path).LastWriteTimeUtc -eq $mtime) 'Plugin regeneration changed bytes or mtime'
+    $run = Invoke-FleetProcess $pwshPath @('-NoProfile','-File',(Join-Path $kitRoot 'scripts/package.ps1'),'-OutputDirectory',$pluginPackage,'-VerifyOnly') $kitRoot
+    Assert ($run.exit_code -eq 0) $run.stderr
+    $bytes = [IO.File]::ReadAllBytes($path)
+    try {
+        $manifest = Read-FleetJson $path
+        $manifest.sources[0].sha256 = '0' * 64
+        Write-FleetJson $path $manifest
+        Write-FleetText (Join-Path $pluginPackage 'package-manifest.sha256') (Get-FleetHash $path)
+        $run = Invoke-FleetProcess $pwshPath @('-NoProfile','-File',(Join-Path $kitRoot 'scripts/package.ps1'),'-OutputDirectory',$pluginPackage,'-VerifyOnly') $kitRoot
+        Assert ($run.exit_code -ne 0 -and $run.stderr.Contains('Source changed; repackage')) 'Stale plugin source accepted'
+        $manifest = [Text.Encoding]::UTF8.GetString($bytes) | ConvertFrom-Json -AsHashtable
+        $manifest.sources = @($manifest.sources | Select-Object -Skip 1)
+        Write-FleetJson $path $manifest
+        Write-FleetText (Join-Path $pluginPackage 'package-manifest.sha256') (Get-FleetHash $path)
+        $run = Invoke-FleetProcess $pwshPath @('-NoProfile','-File',(Join-Path $kitRoot 'scripts/package.ps1'),'-OutputDirectory',$pluginPackage,'-VerifyOnly') $kitRoot
+        Assert ($run.exit_code -ne 0 -and $run.stderr.Contains('Source file set changed')) 'Newly added package source was ignored'
+    } finally {
+        [IO.File]::WriteAllBytes($path,$bytes)
+        Write-FleetText (Join-Path $pluginPackage 'package-manifest.sha256') (Get-FleetHash $path)
+    }
+}
+Check 'plugin packaging refuses hand edits and unmanaged output' @('A13','A30','A31') {
+    $path = Join-Path $pluginPackage 'plugins/fleet-copilot/plugin.json'
+    $bytes = [IO.File]::ReadAllBytes($path)
+    try {
+        Write-FleetText $path 'user edit'
+        Reject { Get-FleetPluginPackage $pluginPackage } 'Plugin edit accepted'
+        $run = Invoke-FleetProcess $pwshPath @('-NoProfile','-File',(Join-Path $kitRoot 'scripts/package.ps1'),'-OutputDirectory',$pluginPackage) $kitRoot
+        Assert ($run.exit_code -ne 0 -and [IO.File]::ReadAllText($path) -ceq 'user edit') 'Plugin regeneration destroyed user edit'
+    } finally { [IO.File]::WriteAllBytes($path,$bytes) }
+    $extra = Join-Path $pluginPackage 'unmanaged.txt'
+    try {
+        Write-FleetText $extra 'preserve'
+        Reject { Get-FleetPluginPackage $pluginPackage } 'Unmanaged plugin file accepted'
+    } finally { Remove-Item -LiteralPath $extra }
+}
 $testHome = New-TestHome 'user home'
 Write-FleetText (Join-Path $testHome '.codex/config.toml') "# user comment`r`n[unrelated]`r`nvalue = 'preserve'`r`n"
 Write-FleetText (Join-Path $testHome '.codex/AGENTS.md') 'Existing user instructions'

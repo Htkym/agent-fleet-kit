@@ -1,6 +1,28 @@
-# Codex Fleet Kit
+# Fleet Kit
 
 [Japanese](README.ja.md)
+
+## Distributable plugins
+
+Download `fleet-kit-plugins-0.1.0.zip` from the [GitHub release](https://github.com/Htkym/agent-fleet-kit/releases/tag/v0.1.0), extract the entire archive, and follow its README. The archive includes both hidden marketplace catalogs. To build from source:
+
+```powershell
+pwsh -NoProfile -File .\scripts\package.ps1
+pwsh -NoProfile -File .\scripts\package.ps1 -VerifyOnly
+```
+
+Distribute the complete `.local\build\plugins` directory, which contains `fleet-codex`, `fleet-copilot`, and both native marketplace catalogs. Copilot includes seven native Agent profiles; Codex bundles seven role contracts as Skill resources because its plugin manifest does not register named TOML Agents. See [plugin installation and distribution](docs/plugins.md).
+
+## Copilot CLI edition
+
+Generate three Skills and seven Markdown Agent profiles for Copilot CLI without replacing the Codex edition:
+
+```powershell
+pwsh -NoProfile -File .\scripts\render.ps1 -Target Copilot -Preview
+pwsh -NoProfile -File .\scripts\verify.ps1 -Bundle .\.local\build\copilot-preview
+```
+
+Copy the required assets from `.local\build\copilot-preview\payload\.github` into the target project's `.github` after checking collisions. Models inherit Copilot settings; Codex model and sandbox configuration is not imported. This remains a non-installable project preview; the native Plugin edition has [separate runtime observations](docs/plugins.md#local-runtime-observations-2026-09-07). See [Copilot CLI setup, invocation, and limitations](docs/copilot-cli.md). The remainder of this README describes the original Codex edition.
 
 ## What this is
 

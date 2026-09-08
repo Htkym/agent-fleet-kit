@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.0
 
+- Added native Codex and Copilot Plugin distributions, portable marketplace catalogs, and package integrity checks.
+- Verified Copilot's seven registered roles in an isolated fixture and Codex Plugin installation and native Skill discovery without inference.
+- Added an opt-in Copilot Plugin runtime harness that records native child/tool events and rejects incomplete, budget-limited runs.
 - Translated public documentation, configuration, and Agent instructions to English. The translated instructions require renewed practical runtime verification.
 - Consolidated run records, generated output, and personal-environment research materials under `.local/` and excluded them from Git.
 - Added public README, operations, contribution, and security documentation, plus Windows CI.

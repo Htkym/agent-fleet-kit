@@ -29,6 +29,7 @@ if ($DestinationHome) {
     $installed = 'hash-verified; runtime discovery unverified'
 }
 if ($Smoke) {
+    if ($manifest.ContainsKey('target') -and $manifest.target -eq 'Copilot') { throw 'Copilot runtime smoke is not implemented; Codex evidence cannot verify Copilot' }
     if (-not $SessionPath -and (-not $CodexPath -or -not $UserHome)) { throw 'Smoke requires -SessionPath or the observed -CodexPath and -UserHome; see operations.md' }
     & (Join-Path $kitRoot 'tests/integration/smoke.ps1') -SessionPath $SessionPath -CodexPath $CodexPath -UserHome $UserHome -Execute:$ExecuteSmoke -Bundle $Bundle -OutputPath $OutputPath
     exit $LASTEXITCODE
