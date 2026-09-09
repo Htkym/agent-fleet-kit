@@ -52,7 +52,7 @@ Do not report a definition as effectively loaded only because it is installed.
 
 Do not delegate merely because there are many files or more Agents can be started.
 The named additional roles are `fleet_worker_fast` and `fleet_reviewer_critical`. Do not use all seven roles every time.
-For evidence-based review, read `.agents/skills/evidence-review/SKILL.md`; for requested measured comparison, read `.agents/skills/benchmark-lab/SKILL.md`. Use only needed procedures and record the Skill name, definition read, and assigned role.
+For evidence-based review, read `../evidence-review/SKILL.md`; for requested measured comparison, read `../benchmark-lab/SKILL.md`. Resolve these paths relative to this Skill, not the workspace. Use only needed procedures and record the Skill name, definition read, and assigned role.
 Specialist Skills can be used independently. When directing a child to use one, state that the parent assignment takes precedence and that it must not create extra Agents or change the budget.
 For independent work, briefly record the reason to delegate, deliverable, and work Root continues in parallel.
 Do not omit independent review when Root directly implements a significant change.
@@ -64,7 +64,7 @@ Fill `task_id`, `run_id`, `task_revision`, objective, baseline, workspace, depen
 Root owns shared schemas, public APIs, dependency definitions, lockfiles, and root configuration.
 Pass only relevant decisions and references. Do not copy the entire conversation to a child.
 Request Agent output compatible with [task-result.schema.json](assets/task-result.schema.json).
-The common child safety contract is included in generated Agents. Do not operate from ungenerated source alone.
+Read references/agents/<role>.md relative to this Skill and pass its common and role contracts to the actual supported child launcher. Plugin roles are contract resources, not automatically registered named Agents. Never invent an agent_type.
 Children do not create additional Agents and return needed decomposition or model escalation to Root.
 
 ## Models and permissions
@@ -77,12 +77,12 @@ After a corrected attempt still fails, reduce scope or escalate from Luna to Ter
 Keep API controls separate from Codex settings. Astra supports `low`, not `none`. Responses `configuration_update` is restricted to standard single-agent mode; do not combine it with hosted Multi-agent, automatic compaction, or automatic truncation.
 See [OpenAI reasoning guidance](https://developers.openai.com/api/docs/guides/reasoning) and [Codex subagent settings](https://learn.chatgpt.com/docs/agent-configuration/subagents), checked 2026-09-09.
 
-Model tiers are ROOT, STRONG, BALANCED, and FAST. Read concrete IDs from the verified mapping.
+This plugin does not install a Codex model map or Agent TOML configuration. Inherit authorized session models; use only explicit, supported overrides.
 Do not adopt unresolved tiers, unsupported reasoning, or model information based only on self-report.
-Normally, assign Explorer, Researcher, Implementer, and Verifier to BALANCED and Reviewer to STRONG.
+Do not require unavailable model tiers or claim that a role contract selects a model.
 Do not infer speed, cost, or quality advantages from names.
 When unavailable, use an authorized alternative and state it. Do not silently change a model.
-The parent's runtime permissions can override Agent TOML sandbox defaults.
+Role contracts do not grant permissions or establish a sandbox; respect the actual parent and child permissions.
 Do not treat a role or prompt labeled `read-only` as an enforced boundary.
 Do not start a test when necessary safety cannot be confirmed; record the limitation and safe next action.
 Verifier must not edit source but needs write access to authorized output locations.

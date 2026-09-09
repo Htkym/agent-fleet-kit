@@ -1,0 +1,20 @@
+{
+  "interface": {
+    "displayName": "Fleet Kit for Codex"
+  },
+  "name": "fleet-kit-codex",
+  "plugins": [
+    {
+      "category": "Productivity",
+      "name": "fleet-codex",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "source": {
+        "path": "./plugins/fleet-codex",
+        "source": "local"
+      }
+    }
+  ]
+}

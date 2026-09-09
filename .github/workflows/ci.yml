@@ -33,3 +33,5 @@ jobs:
         run: ./scripts/package.ps1
       - name: Verify plugin distribution
         run: ./scripts/package.ps1 -VerifyOnly
+      - name: Verify repository marketplace
+        run: ./scripts/package.ps1 -Repository -VerifyOnly

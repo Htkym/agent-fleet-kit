@@ -1,0 +1,7 @@
+{
+  "description": "Bounded Fleet orchestration, evidence review, and measured comparisons for Codex CLI.",
+  "license": "MIT",
+  "name": "fleet-codex",
+  "skills": "./skills/",
+  "version": "0.1.1"
+}

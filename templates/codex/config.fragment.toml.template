@@ -1,7 +1,7 @@
 # Proposal only. Merge with the existing [agents] table using a TOML-aware editor.
 # Merge these top-level keys before any table; preserve other user settings.
 model = "gpt-6-astra"
-model_reasoning_effort = "low"
+model_reasoning_effort = "medium"
 
 [agents]
 enabled = true

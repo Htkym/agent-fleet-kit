@@ -2,13 +2,15 @@
 [CmdletBinding()]
 param(
     [string]$OutputDirectory = (Join-Path (Split-Path $PSScriptRoot -Parent) '.local\build\plugins'),
-    [switch]$VerifyOnly
+    [switch]$VerifyOnly,
+    [switch]$Repository
 )
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'Fleet.psm1') -Force
 $kitRoot = Split-Path $PSScriptRoot -Parent
 $out = Assert-FleetPlainPath $OutputDirectory
-if ($VerifyOnly) {
+if ($Repository -and $PSBoundParameters.ContainsKey('OutputDirectory')) { throw 'Repository mode uses isolated staging; omit OutputDirectory' }
+if ($VerifyOnly -and -not $Repository) {
     $manifest = Get-FleetPluginPackage $out
     $currentSources = @(Get-FleetPluginSources $kitRoot)
     if ((($currentSources.path | Sort-Object) -join "`n") -cne (($manifest.sources.path | Sort-Object) -join "`n")) { throw 'Source file set changed; repackage' }
@@ -18,7 +20,7 @@ if ($VerifyOnly) {
     @{status='package-verified';directory=$out;files=$manifest.files.Count;runtime='not-implied'} | ConvertTo-Json
     return
 }
-$existing = if (Test-Path -LiteralPath $out) { Get-FleetPluginPackage $out } else { $null }
+$existing = if (-not $Repository -and (Test-Path -LiteralPath $out)) { Get-FleetPluginPackage $out } else { $null }
 $stage = Join-Path $kitRoot ('.local\runs\plugin-package\' + [guid]::NewGuid().ToString('N'))
 $distribution = Join-Path $stage 'distribution'
 $version = [IO.File]::ReadAllText((Join-Path $kitRoot 'VERSION')).Trim()
@@ -107,6 +109,10 @@ $sources = @(Get-FleetPluginSources $kitRoot)
 Write-FleetJson (Join-Path $distribution 'package-manifest.json') @{format_version=1;version=$version;files=$files;sources=$sources;runtime_verified=$false}
 Write-FleetText (Join-Path $distribution 'package-manifest.sha256') (Get-FleetHash (Join-Path $distribution 'package-manifest.json'))
 $manifest = Get-FleetPluginPackage $distribution
+if ($Repository) {
+    Sync-FleetRepositoryPlugins $distribution $kitRoot -VerifyOnly:$VerifyOnly | ConvertTo-Json
+    return
+}
 if ($existing -and (($existing.files.path | Sort-Object) -join "`n") -cne (($manifest.files.path | Sort-Object) -join "`n")) {
     throw 'Plugin file set changed; choose a fresh output directory'
 }

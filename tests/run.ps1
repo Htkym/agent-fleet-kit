@@ -407,6 +407,33 @@ Check 'native plugin packages include portable resources and marketplace catalog
     Copy-Item -LiteralPath $pluginPackage -Destination $copy -Recurse
     $null = Get-FleetPluginPackage $copy
 }
+Check 'repository marketplace sync preserves unrelated files and detects drift' @('A13','A30','A31') {
+    $null = Sync-FleetRepositoryPlugins $pluginPackage $kitRoot -VerifyOnly
+    $repo = Join-Path $runRoot 'repository-marketplace'
+    Write-FleetText (Join-Path $repo '.github/workflows/keep.yml') 'preserve workflow'
+    Write-FleetText (Join-Path $repo '.agents/keep.md') 'preserve instructions'
+    Reject { Sync-FleetRepositoryPlugins $pluginPackage $repo -VerifyOnly } 'Missing marketplace accepted'
+    Assert (-not (Test-Path (Join-Path $repo 'plugins'))) 'Verify-only created plugins'
+    $sync = Sync-FleetRepositoryPlugins $pluginPackage $repo
+    Assert ($sync.files -eq 40 -and $sync.changed -eq 40) 'Incomplete repository payload'
+    $null = Sync-FleetRepositoryPlugins $pluginPackage $repo -VerifyOnly
+    Assert ((Sync-FleetRepositoryPlugins $pluginPackage $repo).changed -eq 0) 'Repository sync is not idempotent'
+    foreach ($relative in @('.agents/plugins/marketplace.json','.github/plugin/marketplace.json','plugins/fleet-copilot/plugin.json')) {
+        $target = Join-Path $repo $relative
+        Write-FleetText $target 'edited publishing asset'
+        Reject { Sync-FleetRepositoryPlugins $pluginPackage $repo -VerifyOnly } 'Edited marketplace accepted'
+        Assert ([IO.File]::ReadAllText($target) -ceq 'edited publishing asset') 'Verify-only overwrote drift'
+        $null = Sync-FleetRepositoryPlugins $pluginPackage $repo
+    }
+    $extra = Join-Path $repo 'plugins/fleet-codex/unexpected.txt'
+    $target = Join-Path $repo '.github/plugin/marketplace.json'
+    Write-FleetText $target 'must survive failed sync'
+    Write-FleetText $extra 'unexpected'
+    Reject { Sync-FleetRepositoryPlugins $pluginPackage $repo } 'Unexpected plugin file retained'
+    Assert ([IO.File]::ReadAllText($target) -ceq 'must survive failed sync') 'Sync wrote before preflight completed'
+    Assert ([IO.File]::ReadAllText((Join-Path $repo '.github/workflows/keep.yml')) -ceq 'preserve workflow') 'Workflow changed'
+    Assert ([IO.File]::ReadAllText((Join-Path $repo '.agents/keep.md')) -ceq 'preserve instructions') 'Agent instructions changed'
+}
 Check 'plugin regeneration is deterministic and verify-only rejects stale source claims' @('A30','A31') {
     $path = Join-Path $pluginPackage 'package-manifest.json'
     $hash = Get-FleetHash $path

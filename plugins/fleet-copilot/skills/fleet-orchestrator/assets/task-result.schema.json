@@ -1,0 +1,319 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://fleet-kit.invalid/task-result-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "task-result-v1"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "blocked",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observed_revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "commit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40,64}$"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        }
+      },
+      "required": [
+        "commit",
+        "digest"
+      ]
+    },
+    "changed_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "file",
+              "symbol",
+              "test",
+              "official-source",
+              "runtime"
+            ]
+          },
+          "reference": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "kind",
+          "reference",
+          "summary"
+        ]
+      }
+    },
+    "verification": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "command_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "command": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1
+          },
+          "exit_code": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed",
+              "unverified"
+            ]
+          },
+          "artifact": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-fA-F]{64}$"
+          },
+          "not_run_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revision": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "commit": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[0-9a-f]{40,64}$"
+              },
+              "digest": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{64}$"
+              }
+            },
+            "required": [
+              "commit",
+              "digest"
+            ]
+          },
+          "failure_class": {
+            "enum": [
+              "none",
+              "baseline",
+              "regression",
+              "environment",
+              "flaky",
+              "unclassified",
+              "unverified"
+            ]
+          }
+        },
+        "required": [
+          "command_ref",
+          "command",
+          "exit_code",
+          "status",
+          "artifact",
+          "sha256",
+          "not_run_reason",
+          "revision",
+          "failure_class"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "passed"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "exit_code": {
+                  "const": 0
+                },
+                "artifact": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-fA-F]{64}$"
+                },
+                "not_run_reason": {
+                  "type": "null"
+                },
+                "failure_class": {
+                  "const": "none"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "failed"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "exit_code": {
+                  "type": "integer",
+                  "not": {
+                    "const": 0
+                  }
+                },
+                "artifact": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-fA-F]{64}$"
+                },
+                "failure_class": {
+                  "enum": [
+                    "baseline",
+                    "regression",
+                    "environment",
+                    "flaky",
+                    "unclassified"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "unverified"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "exit_code": {
+                  "type": "null"
+                },
+                "not_run_reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "failure_class": {
+                  "const": "unverified"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "requested_escalation": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "task_id",
+    "run_id",
+    "task_revision",
+    "status",
+    "summary",
+    "observed_revision",
+    "changed_paths",
+    "evidence",
+    "verification",
+    "risks",
+    "blockers",
+    "requested_escalation"
+  ]
+}

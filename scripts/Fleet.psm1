@@ -320,6 +320,31 @@ function Get-FleetPluginPackage([string]$Directory) {
     $manifest
 }
 
+function Sync-FleetRepositoryPlugins([string]$Package, [string]$Repository, [switch]$VerifyOnly) {
+    $manifest = Get-FleetPluginPackage $Package
+    $root = Assert-FleetPlainPath $Repository
+    $entries = @($manifest.files | Where-Object { $_.path -like 'plugins/*' -or $_.path -in @('.agents/plugins/marketplace.json','.github/plugin/marketplace.json') })
+    $pluginRoot = Resolve-FleetPath $root 'plugins'
+    if (Test-Path -LiteralPath $pluginRoot) {
+        foreach ($file in Get-FleetFiles $pluginRoot) {
+            $relative = [IO.Path]::GetRelativePath($root,$file.FullName).Replace('\','/')
+            if ($relative -cnotin $entries.path) { throw "Unexpected repository plugin file: $relative" }
+        }
+    }
+    # Check all destinations before writing; only generated publishing assets are owned.
+    $changes = @(foreach ($entry in $entries) {
+        $target = Resolve-FleetPath $root $entry.path
+        if ((Get-FleetHash $target) -cne $entry.sha256) { $entry }
+    })
+    if ($VerifyOnly -and $changes.Count) { throw "Repository marketplace differs from current source: $($changes.path -join ', ')" }
+    foreach ($entry in $changes) {
+        $target = Resolve-FleetPath $root $entry.path
+        [IO.Directory]::CreateDirectory((Split-Path $target -Parent)) | Out-Null
+        [IO.File]::Copy((Resolve-FleetPath $Package $entry.path),$target,$true)
+    }
+    @{status=$(if ($VerifyOnly) {'repository-marketplace-verified'} else {'repository-marketplace-updated'});files=$entries.Count;changed=$changes.Count;runtime='not-implied'}
+}
+
 function Get-FleetManifest([string]$Bundle) {
     $path = Resolve-FleetPath $Bundle 'manifest.json'
     $digestPath = Resolve-FleetPath $Bundle 'manifest.sha256'
