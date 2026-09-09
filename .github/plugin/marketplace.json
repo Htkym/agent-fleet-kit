@@ -1,0 +1,14 @@
+{
+  "name": "fleet-kit-copilot",
+  "owner": {
+    "name": "Fleet Kit contributors"
+  },
+  "plugins": [
+    {
+      "description": "Bounded orchestration, review, and measurement.",
+      "name": "fleet-copilot",
+      "source": "./plugins/fleet-copilot",
+      "version": "0.1.1"
+    }
+  ]
+}

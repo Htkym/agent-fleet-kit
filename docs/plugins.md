@@ -1,8 +1,8 @@
 # Fleet Kit plugins
 
-These instructions apply to the self-contained plugin distribution, either extracted from the release ZIP or generated at `.local/build/plugins`. Run installation commands from its root, where `plugins/` and `package-manifest.json` are located, not from the source repository root. Publish or archive the entire distribution directory, including hidden `.agents` and `.github` marketplace catalogs, without
-depending on the source Kit or its `.local` directory. Do not publish local
-authentication homes, test fixtures, raw logs, or runtime session records.
+Copilot is distributed directly from this GitHub repository as a native CLI marketplace. Codex retains a local plugin preview and catalog; this release does not apply to or publish in the OpenAI public Plugin Directory.
+
+The release ZIP is an optional local or archival distribution generated at `.local/build/plugins`. Extract the whole archive, including hidden `.agents` and `.github` catalogs. Local installation commands below run from that distribution root. Keep a registered local source directory available. Do not publish authentication homes, test fixtures, or raw runtime records.
 
 | Plugin | Components |
 |---|---|
@@ -17,14 +17,15 @@ real verification, independent review, and Root acceptance.
 
 ## Copilot CLI
 
-From this distribution directory, install the local plugin:
+Register the repository and install the package:
 
 ```powershell
-copilot plugin install .\plugins\fleet-copilot
+copilot plugin marketplace add Htkym/agent-fleet-kit
+copilot plugin install fleet-copilot@fleet-kit-copilot
 copilot plugin list
 ```
 
-Alternatively, register the catalog and install by name:
+For a local extracted distribution, use the same marketplace mechanism from its root:
 
 ```powershell
 copilot plugin marketplace add .
@@ -50,6 +51,15 @@ by `plugin list` for marketplace installations).
 
 ## Codex CLI
 
+The orchestration baseline is Astra Medium. Select `gpt-6-astra` with
+`model_reasoning_effort = "medium"` in the effective Codex configuration; plugin
+installation does not apply model settings. The Skill requests Terra for bounded
+work, Sol for review, and Luna at medium effort for deterministic Worker Fast
+tasks, only when the runtime supports these explicit selections.
+Use up to three independent children normally, within actual runtime limits.
+These are policy defaults pending practical evaluation, not verified cost or
+quality improvements. Copilot continues to inherit its own model configuration.
+
 From this distribution directory:
 
 ```powershell
@@ -67,6 +77,23 @@ For isolated registration/loading checks, set `CODEX_HOME` only in the test proc
 to a dedicated directory. Native plugin commands persist state in that directory.
 Authentication is separate; never copy a personal credential cache into a fixture.
 Successful installation does not by itself prove inference or child execution.
+
+## Repository marketplace assets
+
+The repository publishes Copilot directly. The Codex catalog is retained for local preview structure; no public-directory submission is performed.
+
+```powershell
+pwsh -NoProfile -File scripts/package.ps1 -Repository
+pwsh -NoProfile -File scripts/package.ps1 -Repository -VerifyOnly
+```
+
+Both modes generate a fresh package in `.local/` using the existing renderer.
+The update mode synchronizes only `plugins/`, `.agents/plugins/marketplace.json`,
+and `.github/plugin/marketplace.json`. Commit these assets with their source.
+It refuses unexpected plugin files before writing; it preserves unrelated files
+under `.agents/` and `.github/`. The verification mode changes no publishing
+assets and fails on drift. Versions come from `VERSION`; never hand-edit generated
+files. The ZIP-only package manifest and checksum are not committed.
 
 ## Producing this distribution from source
 

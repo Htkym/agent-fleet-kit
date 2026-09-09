@@ -6,26 +6,31 @@ Fleet Kit provides three Skills and seven roles for coordinating research, imple
 
 Only one source writer may edit a worktree at a time, and children must not delegate recursively. Fleet Kit is a set of instructions and tools, not a scheduler or an OS sandbox. It is not an official OpenAI or GitHub product.
 
-## Install a plugin
+## Install for Copilot CLI
 
-Download `fleet-kit-plugins-0.1.0.zip` from the [v0.1.0 release](https://github.com/Htkym/agent-fleet-kit/releases/tag/v0.1.0) and extract the entire archive, including the hidden `.agents` and `.github` directories. GitHub's **Source code** archives contain development source; use the attached plugin ZIP for installation. The release also includes `SHA256SUMS`.
-
-Run the commands for your CLI from the extracted directory containing `plugins/` and `package-manifest.json`.
-
-### Copilot CLI
+Register this repository as a marketplace, then install the plugin:
 
 ```powershell
-copilot plugin install .\plugins\fleet-copilot
+copilot plugin marketplace add Htkym/agent-fleet-kit
+copilot plugin install fleet-copilot@fleet-kit-copilot
 copilot plugin list
 ```
 
-### Codex CLI
+Start a new Copilot session after installation or an update. Request the `fleet-orchestrator` Skill from `fleet-copilot`.
+
+### Local packages and Codex preview
+
+The [v0.1.1 release](https://github.com/Htkym/agent-fleet-kit/releases/tag/v0.1.1) also provides `fleet-kit-plugins-0.1.1.zip` and `SHA256SUMS` for local or archival use. Extract the entire archive, including hidden `.agents` and `.github` directories. GitHub's **Source code** archives are not this packaged distribution.
+
+Codex is provided as a local plugin preview. Its plugin structure and local catalog are included, but no application to or listing in the OpenAI public Plugin Directory is included in this release. Run these commands from the extracted directory containing `plugins/` and `package-manifest.json`:
 
 ```powershell
 codex plugin marketplace add .
 codex plugin add fleet-codex@fleet-kit-codex
 codex plugin list --json
 ```
+
+For Copilot installation from the extracted package instead of GitHub, use `copilot plugin marketplace add .`, then `copilot plugin install fleet-copilot@fleet-kit-copilot`. Keep the extracted directory available as the local marketplace source. Start a new CLI session after installation or updates.
 
 | Edition | Included components | Model selection |
 |---|---|---|
@@ -35,6 +40,14 @@ codex plugin list --json
 The Codex plugin does not register named TOML Agents. Its orchestrator reads the bundled role contracts and passes them to the supported child launcher. Copilot profiles may appear under names such as `fleet-copilot:fleet_explorer`; use the names actually discovered.
 
 Start a new CLI session in your target project. Confirm the effective Skills and, for Copilot, Agent profiles. Resolve same-name project or personal Skills before use. See [plugin installation, updates, removal, and runtime observations](docs/plugins.md).
+
+## Codex orchestration defaults
+
+Use Astra Medium for Root: set `model = "gpt-6-astra"` and `model_reasoning_effort = "medium"` as top-level Codex settings. Plugin installation does not apply these settings or switch a running session.
+
+The orchestrator requests Terra at medium for exploration, research, and verification; Terra at high for implementation; Sol at high for review; and Luna at medium for Worker Fast. These selections require runtime support and access to the models. Worker Fast handles only fixed, deterministic transformations. Escalate Root to high when evidence justifies it, then return routine work to medium.
+
+Normally run up to three independent children, within the actual session limit. Keep one source writer per worktree and do not delegate recursively. The proposed four-thread ceiling excludes Root and requires separate Codex configuration. These are policy defaults; cost, quality, and execution under the revised policy remain unverified. Copilot continues to use its own model settings.
 
 ## Use the Skills
 
@@ -93,7 +106,16 @@ pwsh -NoProfile -File scripts/package.ps1
 pwsh -NoProfile -File scripts/package.ps1 -VerifyOnly
 ```
 
-The complete distribution is generated under `.local/build/plugins/`. Change into that directory before running the plugin installation commands above. Packaging does not install plugins or change personal settings. Edit the source and regenerate rather than editing generated files.
+The complete local distribution is generated under `.local/build/plugins/`. Change into that directory for the local installation commands. Packaging does not install plugins or change personal settings.
+
+After changing source, update the committed marketplace assets and verify them:
+
+```powershell
+pwsh -NoProfile -File scripts/package.ps1 -Repository
+pwsh -NoProfile -File scripts/package.ps1 -Repository -VerifyOnly
+```
+
+Commit the generated `plugins/`, `.agents/plugins/marketplace.json`, and `.github/plugin/marketplace.json` alongside the source change. Do not hand-edit them. Verification regenerates in `.local/` and fails on missing, edited, or unexpected publishing files without changing them. The ZIP-only integrity manifest stays out of the repository.
 
 ## Generate project files
 

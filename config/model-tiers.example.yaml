@@ -2,7 +2,7 @@
   "format_version":1,
   "cli_version":"0.153.4",
   "tiers":{
-    "ROOT":{"model":"gpt-6-astra","reasoning":["medium","high"],"status":"catalog-only","evidence":"docs/compatibility.md"},
+    "ROOT":{"model":"gpt-6-astra","reasoning":["low","medium","high"],"status":"catalog-only","evidence":"docs/compatibility.md"},
     "STRONG":{"model":"gpt-5.6-sol","reasoning":["medium","high"],"status":"catalog-only","evidence":"docs/compatibility.md"},
     "BALANCED":{"model":"gpt-5.6-terra","reasoning":["medium","high"],"status":"catalog-only","evidence":"docs/compatibility.md"},
     "FAST":{"model":"gpt-5.6-luna","reasoning":["medium","high"],"status":"catalog-only","evidence":"docs/compatibility.md"}

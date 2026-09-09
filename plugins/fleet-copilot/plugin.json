@@ -1,0 +1,8 @@
+{
+  "agents": "./agents/",
+  "description": "Bounded Fleet orchestration, evidence review, and measured comparisons for Copilot CLI.",
+  "license": "MIT",
+  "name": "fleet-copilot",
+  "skills": "./skills/",
+  "version": "0.1.1"
+}

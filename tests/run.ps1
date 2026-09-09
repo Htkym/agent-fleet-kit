@@ -231,6 +231,7 @@ Check 'preview generation includes seven agents three skills and legacy manifest
     Assert ($run.exit_code -eq 0) $run.stderr
     $manifest = Get-FleetManifest $bundle
     Assert (-not $manifest.installable) 'Preview marked installable'
+    Assert ($manifest.resolved.fleet_worker_fast.model -ceq 'gpt-5.6-luna' -and $manifest.resolved.fleet_worker_fast.reasoning -ceq 'medium') 'Worker Fast mapping mismatch'
     Assert (@($manifest.files | Where-Object path -Like '.codex/agents/*').Count -eq 7) 'Agent count mismatch'
     Assert (@($manifest.files | Where-Object path -Like '.agents/skills/*/SKILL.md').Count -eq 3) 'Skill count mismatch'
     if (Test-Path (Join-Path $kitRoot '.local/archive/build/personal/manifest.json')) { $null=Get-FleetManifest (Join-Path $kitRoot '.local/archive/build/personal') }
@@ -384,6 +385,9 @@ Check 'native plugin packages include portable resources and marketplace catalog
     Assert ($run.exit_code -eq 0) $run.stderr
     $manifest = Get-FleetPluginPackage $pluginPackage
     Assert (-not $manifest.runtime_verified -and $manifest.files.Count -eq 41) 'Unexpected plugin payload or runtime claim'
+    foreach ($entry in $manifest.files) {
+        Assert (-not [IO.File]::ReadAllText((Join-Path $pluginPackage $entry.path)).Contains("`r")) 'Plugin output does not match Git LF checkout'
+    }
     $codexCatalog = Read-FleetJson (Join-Path $pluginPackage '.agents/plugins/marketplace.json')
     $copilotCatalog = Read-FleetJson (Join-Path $pluginPackage '.github/plugin/marketplace.json')
     Assert ($codexCatalog.name -ceq 'fleet-kit-codex' -and $codexCatalog.plugins[0].source.path -ceq './plugins/fleet-codex') 'Codex marketplace does not resolve from distribution root'
@@ -405,6 +409,33 @@ Check 'native plugin packages include portable resources and marketplace catalog
     $copy = Join-Path $runRoot 'relocated-distribution'
     Copy-Item -LiteralPath $pluginPackage -Destination $copy -Recurse
     $null = Get-FleetPluginPackage $copy
+}
+Check 'repository marketplace sync preserves unrelated files and detects drift' @('A13','A30','A31') {
+    $null = Sync-FleetRepositoryPlugins $pluginPackage $kitRoot -VerifyOnly
+    $repo = Join-Path $runRoot 'repository-marketplace'
+    Write-FleetText (Join-Path $repo '.github/workflows/keep.yml') 'preserve workflow'
+    Write-FleetText (Join-Path $repo '.agents/keep.md') 'preserve instructions'
+    Reject { Sync-FleetRepositoryPlugins $pluginPackage $repo -VerifyOnly } 'Missing marketplace accepted'
+    Assert (-not (Test-Path (Join-Path $repo 'plugins'))) 'Verify-only created plugins'
+    $sync = Sync-FleetRepositoryPlugins $pluginPackage $repo
+    Assert ($sync.files -eq 40 -and $sync.changed -eq 40) 'Incomplete repository payload'
+    $null = Sync-FleetRepositoryPlugins $pluginPackage $repo -VerifyOnly
+    Assert ((Sync-FleetRepositoryPlugins $pluginPackage $repo).changed -eq 0) 'Repository sync is not idempotent'
+    foreach ($relative in @('.agents/plugins/marketplace.json','.github/plugin/marketplace.json','plugins/fleet-copilot/plugin.json')) {
+        $target = Join-Path $repo $relative
+        Write-FleetText $target 'edited publishing asset'
+        Reject { Sync-FleetRepositoryPlugins $pluginPackage $repo -VerifyOnly } 'Edited marketplace accepted'
+        Assert ([IO.File]::ReadAllText($target) -ceq 'edited publishing asset') 'Verify-only overwrote drift'
+        $null = Sync-FleetRepositoryPlugins $pluginPackage $repo
+    }
+    $extra = Join-Path $repo 'plugins/fleet-codex/unexpected.txt'
+    $target = Join-Path $repo '.github/plugin/marketplace.json'
+    Write-FleetText $target 'must survive failed sync'
+    Write-FleetText $extra 'unexpected'
+    Reject { Sync-FleetRepositoryPlugins $pluginPackage $repo } 'Unexpected plugin file retained'
+    Assert ([IO.File]::ReadAllText($target) -ceq 'must survive failed sync') 'Sync wrote before preflight completed'
+    Assert ([IO.File]::ReadAllText((Join-Path $repo '.github/workflows/keep.yml')) -ceq 'preserve workflow') 'Workflow changed'
+    Assert ([IO.File]::ReadAllText((Join-Path $repo '.agents/keep.md')) -ceq 'preserve instructions') 'Agent instructions changed'
 }
 Check 'plugin regeneration is deterministic and verify-only rejects stale source claims' @('A30','A31') {
     $path = Join-Path $pluginPackage 'package-manifest.json'

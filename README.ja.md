@@ -6,26 +6,31 @@ Fleet Kitは、Codex CLIとGitHub Copilot CLIで調査、実装、検証、独�
 
 同じworktreeでソースを編集するAgentは常に1つに限定し、子Agentは再委譲しません。Fleet Kitは手順とツールのセットであり、スケジューラーやOSのsandboxではありません。OpenAIやGitHubの公式製品ではありません。
 
-## Pluginを導入する
+## Copilot CLIに導入する
 
-[v0.1.0のリリース](https://github.com/Htkym/agent-fleet-kit/releases/tag/v0.1.0)から`fleet-kit-plugins-0.1.0.zip`をダウンロードし、隠しディレクトリの`.agents`と`.github`を含めて全体を展開します。GitHubの「Source code」は開発用ソースなので、導入には添付のPlugin用ZIPを使ってください。チェックサムは同じリリースの`SHA256SUMS`にあります。
-
-展開先のうち、`plugins/`と`package-manifest.json`があるディレクトリで、利用するCLIのコマンドを実行します。
-
-### Copilot CLI
+このリポジトリをマーケットプレイスとして登録し、Pluginをインストールします。
 
 ```powershell
-copilot plugin install .\plugins\fleet-copilot
+copilot plugin marketplace add Htkym/agent-fleet-kit
+copilot plugin install fleet-copilot@fleet-kit-copilot
 copilot plugin list
 ```
 
-### Codex CLI
+導入・更新後はCopilotの新しいセッションを開始し、`fleet-copilot`の`fleet-orchestrator` Skillを指定してください。
+
+### ローカル配布物とCodexのプレビュー
+
+[v0.1.1のリリース](https://github.com/Htkym/agent-fleet-kit/releases/tag/v0.1.1)には、ローカルでの導入や保管用に`fleet-kit-plugins-0.1.1.zip`と`SHA256SUMS`も添付します。隠しディレクトリの`.agents`と`.github`を含めて全体を展開してください。GitHubの「Source code」は、この配布用パッケージとは異なります。
+
+Codex版はローカル導入用のプレビューです。Pluginの構成とローカルカタログを同梱しますが、今回のリリースではOpenAIの公開Plugin Directoryへの申請・掲載は行いません。展開先のうち、`plugins/`と`package-manifest.json`があるディレクトリで実行します。
 
 ```powershell
 codex plugin marketplace add .
 codex plugin add fleet-codex@fleet-kit-codex
 codex plugin list --json
 ```
+
+Copilotも展開済みパッケージから導入する場合は、`copilot plugin marketplace add .`に続けて`copilot plugin install fleet-copilot@fleet-kit-copilot`を実行します。ローカルマーケットプレイスの参照先として、展開したディレクトリは保持してください。導入・更新後はCLIの新しいセッションを開始します。
 
 | Plugin | 含まれるもの | モデルの選択 |
 |---|---|---|
@@ -35,6 +40,14 @@ codex plugin list --json
 Codex Pluginは名前付きTOML Agentを登録しません。orchestratorが同梱の役割契約を読み、対応する子Agent起動ツールへ渡します。Copilotでは`fleet-copilot:fleet_explorer`のような名前で表示される場合があるため、実際に認識された名前を使います。
 
 導入後は、作業対象のプロジェクトでCLIの新しいセッションを開始します。読み込まれたSkillと、Copilotの場合はAgent定義も確認してください。プロジェクトや個人設定に同名のSkillがある場合は、どの定義を使うかを確認してから依頼します。更新、削除、実機確認の記録は[Pluginの手順](docs/plugins.md)にあります。
+
+## Codexのオーケストレーション設定
+
+RootにはAstra Mediumを使います。Codex設定のトップレベルに`model = "gpt-6-astra"`と`model_reasoning_effort = "medium"`を指定してください。Pluginの導入だけでは設定は追加されず、実行中のセッションも切り替わりません。
+
+子Agentには、調査と検証でTerra medium、実装でTerra high、レビューでSol high、Worker FastでLuna mediumを指定する方針です。実際に選べるモデルと起動ツールの対応範囲に従います。Worker Fastは規則と結果が決まった定型変更に限定します。Rootは根拠がある場合にhighへ上げ、問題が解消したらmediumへ戻します。
+
+通常は独立した子タスクを最大3つまで並行して進め、実際のセッション上限に従います。ソースを編集するAgentはworktreeごとに1つとし、子Agentは再委譲しません。提案している4スレッドの上限はRootを含まず、別途Codex側の設定が必要です。この方針での実行結果や費用、品質の改善は未検証です。Copilotは引き続きCopilot側のモデル設定を使います。
 
 ## Skillを使う
 
@@ -93,7 +106,16 @@ pwsh -NoProfile -File scripts/package.ps1
 pwsh -NoProfile -File scripts/package.ps1 -VerifyOnly
 ```
 
-配布物一式は`.local/build/plugins/`に生成されます。上記のPlugin導入コマンドを使う場合は、このディレクトリへ移動してください。パッケージ生成ではPluginの導入や個人設定の変更は行いません。生成物を直接編集せず、ソースを変更して再生成します。
+ローカル配布物一式は`.local/build/plugins/`に生成されます。ローカル導入のコマンドは、このディレクトリで実行してください。生成処理ではPluginの導入や個人設定の変更は行いません。
+
+ソースを変更したら、リポジトリで配布するファイルも更新して照合します。
+
+```powershell
+pwsh -NoProfile -File scripts/package.ps1 -Repository
+pwsh -NoProfile -File scripts/package.ps1 -Repository -VerifyOnly
+```
+
+生成された`plugins/`、`.agents/plugins/marketplace.json`、`.github/plugin/marketplace.json`をソースと一緒にコミットします。これらは直接編集しません。照合処理は`.local/`に再生成し、配布ファイルの欠落、改変、想定外の追加があれば、対象を変更せずに失敗します。ZIP用の整合性マニフェストはコミットしません。
 
 ## プロジェクト内に配置するファイルを生成する
 
