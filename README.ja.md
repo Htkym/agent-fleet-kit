@@ -8,7 +8,7 @@ Fleet Kitは、Codex CLIとGitHub Copilot CLIで調査、実装、検証、独�
 
 ## Pluginを導入する
 
-[v0.1.0のリリース](https://github.com/Htkym/agent-fleet-kit/releases/tag/v0.1.0)から`fleet-kit-plugins-0.1.0.zip`をダウンロードし、隠しディレクトリの`.agents`と`.github`を含めて全体を展開します。GitHubの「Source code」は開発用ソースなので、導入には添付のPlugin用ZIPを使ってください。チェックサムは同じリリースの`SHA256SUMS`にあります。
+[v0.1.1のリリース](https://github.com/Htkym/agent-fleet-kit/releases/tag/v0.1.1)から`fleet-kit-plugins-0.1.1.zip`をダウンロードし、隠しディレクトリの`.agents`と`.github`を含めて全体を展開します。GitHubの「Source code」は開発用ソースなので、導入には添付のPlugin用ZIPを使ってください。チェックサムは同じリリースの`SHA256SUMS`にあります。
 
 展開先のうち、`plugins/`と`package-manifest.json`があるディレクトリで、利用するCLIのコマンドを実行します。
 
@@ -35,6 +35,14 @@ codex plugin list --json
 Codex Pluginは名前付きTOML Agentを登録しません。orchestratorが同梱の役割契約を読み、対応する子Agent起動ツールへ渡します。Copilotでは`fleet-copilot:fleet_explorer`のような名前で表示される場合があるため、実際に認識された名前を使います。
 
 導入後は、作業対象のプロジェクトでCLIの新しいセッションを開始します。読み込まれたSkillと、Copilotの場合はAgent定義も確認してください。プロジェクトや個人設定に同名のSkillがある場合は、どの定義を使うかを確認してから依頼します。更新、削除、実機確認の記録は[Pluginの手順](docs/plugins.md)にあります。
+
+## Codexのオーケストレーション設定
+
+RootにはAstra Lowを使います。Codex設定のトップレベルに`model = "gpt-6-astra"`と`model_reasoning_effort = "low"`を指定してください。Pluginの導入だけでは設定は追加されず、実行中のセッションも切り替わりません。
+
+子Agentには、調査と検証でTerra medium、実装でTerra high、レビューでSol high、Worker FastでLuna mediumを指定する方針です。実際に選べるモデルと起動ツールの対応範囲に従います。Worker Fastは規則と結果が決まった定型変更に限定します。Rootは根拠がある場合にmediumやhighへ上げ、問題が解消したらlowへ戻します。
+
+通常は独立した子タスクを最大3つまで並行して進め、実際のセッション上限に従います。ソースを編集するAgentはworktreeごとに1つとし、子Agentは再委譲しません。提案している4スレッドの上限はRootを含まず、別途Codex側の設定が必要です。この方針での実行結果や費用、品質の改善は未検証です。Copilotは引き続きCopilot側のモデル設定を使います。
 
 ## Skillを使う
 

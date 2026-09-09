@@ -50,6 +50,15 @@ by `plugin list` for marketplace installations).
 
 ## Codex CLI
 
+The orchestration baseline is Astra Low. Select `gpt-6-astra` with
+`model_reasoning_effort = "low"` in the effective Codex configuration; plugin
+installation does not apply model settings. The Skill requests Terra for bounded
+work, Sol for review, and Luna at medium effort for deterministic Worker Fast
+tasks, only when the runtime supports these explicit selections.
+Use up to three independent children normally, within actual runtime limits.
+These are policy defaults pending practical evaluation, not verified cost or
+quality improvements. Copilot continues to inherit its own model configuration.
+
 From this distribution directory:
 
 ```powershell

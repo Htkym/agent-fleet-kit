@@ -69,6 +69,14 @@ Children do not create additional Agents and return needed decomposition or mode
 
 ## Models and permissions
 
+Use GPT-6 Astra with `low` reasoning effort for Root when available and authorized. Confirm the effective model and effort; this Skill does not configure them.
+Escalate Root to `medium` for unresolved evidence conflicts or failed integration, and to `high` for a concrete high-risk acceptance decision. Record the reason and return routine work to `low` afterward.
+Explicitly select supported child models and efforts instead of unintentionally inheriting Astra Low: Explorer, Researcher, and Verifier use `gpt-5.6-terra` at medium; Implementer uses Terra at high; Reviewer and Reviewer Critical use `gpt-5.6-sol` at high; Worker Fast uses `gpt-5.6-luna` at medium.
+These are candidate mappings, not proof of availability or cost savings. Worker Fast requires exact files, fixed rules, deterministic acceptance, and no unresolved design, public-contract, security, or data-loss risk.
+After a corrected attempt still fails, reduce scope or escalate from Luna to Terra, Sol, then Astra only when evidence justifies it. Record the reason; do not repeat an unchanged assignment.
+Keep API controls separate from Codex settings. Astra supports `low`, not `none`. Responses `configuration_update` is restricted to standard single-agent mode; do not combine it with hosted Multi-agent, automatic compaction, or automatic truncation.
+See [OpenAI reasoning guidance](https://developers.openai.com/api/docs/guides/reasoning) and [Codex subagent settings](https://learn.chatgpt.com/docs/agent-configuration/subagents), checked 2026-09-09.
+
 Model tiers are ROOT, STRONG, BALANCED, and FAST. Read concrete IDs from the verified mapping.
 Do not adopt unresolved tiers, unsupported reasoning, or model information based only on self-report.
 Normally, assign Explorer, Researcher, Implementer, and Verifier to BALANCED and Reviewer to STRONG.
@@ -88,7 +96,9 @@ Integrate research results and fix the public contract and ownership.
 Mark work `ready` only after confirming that dependencies are complete.
 Only one writer, including Root, may work in a worktree. Do not start multiple writers in the initial release.
 Give read-only roles separate required output locations to avoid conflicts in generated logs.
-Respect the lower of configured and actual session limits. The initial design has four children and one writer.
+Start independent bounded read-only work concurrently when it shortens the critical path or adds independent evidence and host policy permits it. Run Verifier and Reviewer concurrently on the fixed revision with separate evidence paths.
+Use up to three active children normally; this is not a quota. A fourth requires four independent deliverables and a reason to expect a benefit.
+Respect the lower of configured and actual session limits. The proposed Codex ceiling is four open spawned threads, excluding Root, and one source writer per worktree. Only effective runtime configuration enforces the thread ceiling; this Skill cannot enforce it.
 This is not a machine-wide limit shared by all repositories.
 Completed but still-open children can consume capacity, so close unnecessary children after collecting results.
 When no close API exists, record that limitation and do not report released capacity.

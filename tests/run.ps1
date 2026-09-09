@@ -231,6 +231,7 @@ Check 'preview generation includes seven agents three skills and legacy manifest
     Assert ($run.exit_code -eq 0) $run.stderr
     $manifest = Get-FleetManifest $bundle
     Assert (-not $manifest.installable) 'Preview marked installable'
+    Assert ($manifest.resolved.fleet_worker_fast.model -ceq 'gpt-5.6-luna' -and $manifest.resolved.fleet_worker_fast.reasoning -ceq 'medium') 'Worker Fast mapping mismatch'
     Assert (@($manifest.files | Where-Object path -Like '.codex/agents/*').Count -eq 7) 'Agent count mismatch'
     Assert (@($manifest.files | Where-Object path -Like '.agents/skills/*/SKILL.md').Count -eq 3) 'Skill count mismatch'
     if (Test-Path (Join-Path $kitRoot '.local/archive/build/personal/manifest.json')) { $null=Get-FleetManifest (Join-Path $kitRoot '.local/archive/build/personal') }

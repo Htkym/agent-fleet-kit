@@ -8,7 +8,7 @@ Only one source writer may edit a worktree at a time, and children must not dele
 
 ## Install a plugin
 
-Download `fleet-kit-plugins-0.1.0.zip` from the [v0.1.0 release](https://github.com/Htkym/agent-fleet-kit/releases/tag/v0.1.0) and extract the entire archive, including the hidden `.agents` and `.github` directories. GitHub's **Source code** archives contain development source; use the attached plugin ZIP for installation. The release also includes `SHA256SUMS`.
+Download `fleet-kit-plugins-0.1.1.zip` from the [v0.1.1 release](https://github.com/Htkym/agent-fleet-kit/releases/tag/v0.1.1) and extract the entire archive, including the hidden `.agents` and `.github` directories. GitHub's **Source code** archives contain development source; use the attached plugin ZIP for installation. The release also includes `SHA256SUMS`.
 
 Run the commands for your CLI from the extracted directory containing `plugins/` and `package-manifest.json`.
 
@@ -35,6 +35,14 @@ codex plugin list --json
 The Codex plugin does not register named TOML Agents. Its orchestrator reads the bundled role contracts and passes them to the supported child launcher. Copilot profiles may appear under names such as `fleet-copilot:fleet_explorer`; use the names actually discovered.
 
 Start a new CLI session in your target project. Confirm the effective Skills and, for Copilot, Agent profiles. Resolve same-name project or personal Skills before use. See [plugin installation, updates, removal, and runtime observations](docs/plugins.md).
+
+## Codex orchestration defaults
+
+Use Astra Low for Root: set `model = "gpt-6-astra"` and `model_reasoning_effort = "low"` as top-level Codex settings. Plugin installation does not apply these settings or switch a running session.
+
+The orchestrator requests Terra at medium for exploration, research, and verification; Terra at high for implementation; Sol at high for review; and Luna at medium for Worker Fast. These selections require runtime support and access to the models. Worker Fast handles only fixed, deterministic transformations. Escalate Root to medium or high when evidence justifies it, then return routine work to low.
+
+Normally run up to three independent children, within the actual session limit. Keep one source writer per worktree and do not delegate recursively. The proposed four-thread ceiling excludes Root and requires separate Codex configuration. These are policy defaults; cost, quality, and execution under the revised policy remain unverified. Copilot continues to use its own model settings.
 
 ## Use the Skills
 
