@@ -385,6 +385,9 @@ Check 'native plugin packages include portable resources and marketplace catalog
     Assert ($run.exit_code -eq 0) $run.stderr
     $manifest = Get-FleetPluginPackage $pluginPackage
     Assert (-not $manifest.runtime_verified -and $manifest.files.Count -eq 41) 'Unexpected plugin payload or runtime claim'
+    foreach ($entry in $manifest.files) {
+        Assert (-not [IO.File]::ReadAllText((Join-Path $pluginPackage $entry.path)).Contains("`r")) 'Plugin output does not match Git LF checkout'
+    }
     $codexCatalog = Read-FleetJson (Join-Path $pluginPackage '.agents/plugins/marketplace.json')
     $copilotCatalog = Read-FleetJson (Join-Path $pluginPackage '.github/plugin/marketplace.json')
     Assert ($codexCatalog.name -ceq 'fleet-kit-codex' -and $codexCatalog.plugins[0].source.path -ceq './plugins/fleet-codex') 'Codex marketplace does not resolve from distribution root'

@@ -103,6 +103,9 @@ Write-FleetJson (Join-Path $distribution '.github\plugin\marketplace.json') @{
 }
 Write-FleetText (Join-Path $distribution 'README.md') ([IO.File]::ReadAllText((Join-Path $kitRoot 'docs\plugins.md')))
 $files = @(foreach ($file in Get-FleetFiles $distribution | Sort-Object FullName) {
+    # Match .gitattributes so generated publishing assets survive a fresh checkout.
+    $text = [IO.File]::ReadAllText($file.FullName)
+    if ($text.Contains("`r`n")) { Write-FleetText $file.FullName ($text.Replace("`r`n","`n")) }
     @{path=[IO.Path]::GetRelativePath($distribution,$file.FullName).Replace('\','/');sha256=(Get-FleetHash $file.FullName)}
 })
 $sources = @(Get-FleetPluginSources $kitRoot)
